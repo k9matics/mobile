@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Mobile</title>
+    <title>K9matics Mobile Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -11,51 +11,60 @@
             --card-bg: #161b22;
             --neon-cyan: #00ffcc;
             --neon-pink: #ff0055;
+            --neon-yellow: #ffcc00;
             --text: #c9d1d9;
         }
         body {
             margin: 0; padding: 0;
             background-color: var(--bg);
             color: var(--text);
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex; flex-direction: column; height: 100vh;
         }
         header {
-            padding: 15px 20px; background-color: var(--card-bg);
+            padding: 12px 20px; background-color: var(--card-bg);
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid #30363d;
         }
-        h1 { margin: 0; font-size: 1.2rem; color: #fff; }
+        h1 { margin: 0; font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
         .btn {
             background-color: var(--neon-cyan); color: #000;
-            border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;
+            border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer;
         }
         .controls {
-            display: flex; gap: 10px; padding: 15px 20px 0 20px;
+            display: flex; gap: 10px; padding: 12px 20px 0 20px;
         }
-        .btn-measure { background-color: #238636; color: #fff; flex: 1; font-size: 1rem; padding: 12px; }
+        .btn-measure { background-color: #238636; color: #fff; flex: 1; font-size: 0.95rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-measure.active { background-color: var(--neon-pink); animation: pulse 1.5s infinite; }
-        .btn-export { background-color: #30363d; color: #8b949e; flex: 1; pointer-events: none; }
+        .btn-export { background-color: #30363d; color: #8b949e; flex: 1; pointer-events: none; border-radius: 8px; border: none; font-weight: bold; }
         .btn-export.ready { background-color: #1f6beb; color: #fff; pointer-events: auto; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         
-        .dashboard { padding: 15px 20px; flex-grow: 1; display: flex; flex-direction: column; }
-        .status-bar { text-align: center; font-size: 0.85rem; color: #8b949e; margin-bottom: 10px; }
-        .kpi-container { display: flex; gap: 15px; margin-bottom: 15px; }
+        .dashboard { padding: 12px 20px; flex-grow: 1; display: flex; flex-direction: column; }
+        
+        .gait-badge {
+            align-self: center; background-color: #21262d; border: 1px solid #30363d;
+            padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold;
+            color: var(--neon-yellow); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        .kpi-container { display: flex; gap: 10px; margin-bottom: 10px; }
         .kpi-box {
-            background-color: var(--card-bg); padding: 15px; border-radius: 12px;
+            background-color: var(--card-bg); padding: 12px; border-radius: 10px;
             flex: 1; text-align: center; border: 1px solid #30363d;
         }
-        .kpi-title { font-size: 0.8rem; color: #8b949e; margin-bottom: 5px; text-transform: uppercase; }
-        .kpi-value { font-size: 1.8rem; font-weight: bold; color: var(--neon-cyan); }
+        .kpi-title { font-size: 0.75rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; }
+        .kpi-value { font-size: 1.5rem; font-weight: bold; color: var(--neon-cyan); }
         .kpi-value.pink { color: var(--neon-pink); }
-        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 200px; }
+        .kpi-value.yellow { color: var(--neon-yellow); }
+
+        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 180px; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>K9MATICS</h1>
+        <h1>K9MATICS PRO</h1>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
@@ -65,15 +74,20 @@
     </div>
 
     <div class="dashboard">
-        <div class="status-bar" id="statusText">Sensor verbinden, dann Messung starten.</div>
+        <div class="gait-badge" id="gaitStatus">Status: Nicht verbunden</div>
+        
         <div class="kpi-container">
             <div class="kpi-box">
                 <div class="kpi-title">Asymmetrie</div>
                 <div class="kpi-value" id="valAsym">-- %</div>
             </div>
             <div class="kpi-box">
-                <div class="kpi-title">Mittlere Stoßkraft</div>
+                <div class="kpi-title">Stoßkraft</div>
                 <div class="kpi-value pink" id="valImpact">-- G</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title">Schritte</div>
+                <div class="kpi-value yellow" id="valSteps">0</div>
             </div>
         </div>
 
@@ -87,16 +101,21 @@
         const CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         
         let bleDevice;
-        let magData = Array(100).fill(0);
-        let timeData = Array.from({length: 100}, (_, i) => i);
+        let magData = Array(120).fill(0);
+        let timeData = Array.from({length: 120}, (_, i) => i);
         let buffer = "";
 
-        // Messung & Recording
+        // Filter-Speicher für I2C-Dropouts (0.00 G Ausreißer)
+        let lastX = 0, lastY = 0, lastZ = -1.0;
+
+        // Messungs & Recording Variablen
         let isMeasuring = false;
         let recordedSession = [];
-        let sessionPeaksData = [];
         let recordStartTime = 0;
+        let totalStepCount = 0;
+        let activeGait = "Ruhe";
 
+        // Chart.js Setup
         const ctx = document.getElementById('liveChart').getContext('2d');
         const liveChart = new Chart(ctx, {
             type: 'line',
@@ -104,16 +123,20 @@
                 labels: timeData,
                 datasets: [{
                     data: magData, borderColor: '#00ffcc', borderWidth: 2,
-                    pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 204, 0.1)', tension: 0.1
+                    pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 204, 0.08)', tension: 0.1
                 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: false,
-                scales: { x: { display: false }, y: { min: 0, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } },
+                scales: { 
+                    x: { display: false }, 
+                    y: { min: 0, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } 
+                },
                 plugins: { legend: { display: false } }
             }
         });
 
+        // Peak Finder (Bodenkontakt-Erkennung)
         function findPeaks(data, height, distance) {
             let peaks = [];
             for (let i = 1; i < data.length - 1; i++) {
@@ -124,6 +147,18 @@
                 }
             }
             return peaks;
+        }
+
+        // Automatische Gangarten-Erkennung (Schritt, Trab, Galopp)
+        function detectGait(peaks, recentAvgMag) {
+            if (recentAvgMag < 1.12 && peaks.length === 0) return "Ruhe";
+            if (peaks.length === 0) return "Bewegung";
+            
+            const meanPeakVal = peaks.reduce((a, b) => a + b.value, 0) / peaks.length;
+            
+            if (meanPeakVal > 2.7) return "Galopp";
+            if (meanPeakVal >= 1.3 && meanPeakVal <= 2.7) return "Trab";
+            return "Schritt";
         }
 
         async function connectBluetooth() {
@@ -143,7 +178,7 @@
                 
                 btn.innerText = "Verbunden";
                 btn.style.backgroundColor = "#ff0055"; btn.style.color = "#fff";
-                document.getElementById('statusText').innerText = "Bereit für Messung.";
+                document.getElementById('gaitStatus').innerText = "Status: Bereit";
                 setInterval(updateDashboard, 100);
             } catch (error) {
                 console.error(error);
@@ -162,9 +197,16 @@
             for (let line of lines) {
                 const match = line.match(/X:([-\d\.]+)\s+Y:([-\d\.]+)\s+Z:([-\d\.]+)/);
                 if (match) {
-                    const x = parseFloat(match[1]);
-                    const y = parseFloat(match[2]);
-                    const z = parseFloat(match[3]);
+                    let x = parseFloat(match[1]);
+                    let y = parseFloat(match[2]);
+                    let z = parseFloat(match[3]);
+
+                    // Glitch-Filter: Fängt I2C 0.00 G Ausreißer ab
+                    if (z === 0 && Math.abs(lastZ) > 0.2) z = lastZ;
+                    if (x === 0 && Math.abs(lastX) > 0.2) x = lastX;
+                    if (y === 0 && Math.abs(lastY) > 0.2) y = lastY;
+                    lastX = x; lastY = y; lastZ = z;
+
                     const mag = Math.sqrt(x*x + y*y + z*z);
                     
                     magData.push(mag);
@@ -172,7 +214,7 @@
 
                     if (isMeasuring) {
                         const timestamp = ((now - recordStartTime) / 1000).toFixed(3);
-                        recordedSession.push(`${timestamp},${x},${y},${z},${mag.toFixed(3)}`);
+                        recordedSession.push(`${timestamp},${x},${y},${z},${mag.toFixed(3)},${activeGait}`);
                     }
                 }
             }
@@ -181,15 +223,29 @@
         function updateDashboard() {
             liveChart.update();
 
-            // Nur Auswerten, wenn eine Messung AKTIV läuft
+            // Auswertung des aktuellen Puffers
+            const peaks = findPeaks(magData, 1.25, 7);
+            const recentAvg = magData.slice(-20).reduce((a, b) => a + b, 0) / 20;
+            
+            activeGait = detectGait(peaks, recentAvg);
+            
             if (isMeasuring) {
-                const peaks = findPeaks(magData, 1.2, 8);
-                if (peaks.length > 0) {
-                    const peakVals = peaks.map(p => p.value);
-                    const meanImpact = peakVals.reduce((a, b) => a + b, 0) / peakVals.length;
+                document.getElementById('gaitStatus').innerText = `Messung läuft | Gangart: ${activeGait}`;
+            } else {
+                document.getElementById('gaitStatus').innerText = `Status: ${activeGait}`;
+            }
+
+            if (peaks.length > 0) {
+                const peakVals = peaks.map(p => p.value);
+                const meanImpact = peakVals.reduce((a, b) => a + b, 0) / peakVals.length;
+                
+                if (isMeasuring) {
+                    totalStepCount = peaks.length;
+                    document.getElementById('valSteps').innerText = totalStepCount;
                     document.getElementById('valImpact').innerText = meanImpact.toFixed(2) + " G";
 
-                    if (peakVals.length >= 4) {
+                    // Asymmetrie-Berechnung nur im TRAB (biometrisch sinnvoll)
+                    if (activeGait === "Trab" && peakVals.length >= 4) {
                         const lefts = peakVals.filter((_, i) => i % 2 === 0);
                         const rights = peakVals.filter((_, i) => i % 2 !== 0);
                         if (lefts.length > 0 && rights.length > 0) {
@@ -198,6 +254,8 @@
                             const asym = Math.abs(meanL - meanR) / ((meanL + meanR) / 2) * 100;
                             document.getElementById('valAsym').innerText = asym.toFixed(1) + "%";
                         }
+                    } else if (activeGait !== "Trab") {
+                        document.getElementById('valAsym').innerText = "(Nur Trab)";
                     }
                 }
             }
@@ -207,13 +265,13 @@
         document.getElementById('measureBtn').addEventListener('click', () => {
             const measureBtn = document.getElementById('measureBtn');
             const exportBtn = document.getElementById('exportBtn');
-            const statusText = document.getElementById('statusText');
             
             if (!isMeasuring) {
                 // START
                 isMeasuring = true;
                 recordStartTime = Date.now();
-                recordedSession = ["Time_Sec,X,Y,Z,Magnitude"];
+                recordedSession = ["Time_Sec,X,Y,Z,Magnitude,Gangart"];
+                totalStepCount = 0;
                 
                 measureBtn.innerText = "Messung Stoppen";
                 measureBtn.classList.add("active");
@@ -221,14 +279,13 @@
                 
                 document.getElementById('valAsym').innerText = "...";
                 document.getElementById('valImpact').innerText = "...";
-                statusText.innerText = "Messung läuft... Hund gleichmäßig laufen lassen!";
+                document.getElementById('valSteps').innerText = "0";
             } else {
                 // STOP
                 isMeasuring = false;
                 measureBtn.innerText = "Neue Messung";
                 measureBtn.classList.remove("active");
                 
-                statusText.innerText = "Messung beendet. Endergebnis oben eingefroren.";
                 if (recordedSession.length > 1) {
                     exportBtn.classList.add("ready");
                 }
