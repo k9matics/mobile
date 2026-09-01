@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Mobile Pro</title>
+    <title>K9matics Mobile Pro 3D</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --bg: #0d1117;
@@ -16,9 +17,7 @@
             --text: #c9d1d9;
         }
         body {
-            margin: 0; padding: 0;
-            background-color: var(--bg);
-            color: var(--text);
+            margin: 0; padding: 0; background-color: var(--bg); color: var(--text);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex; flex-direction: column; height: 100vh;
         }
@@ -29,12 +28,10 @@
         }
         h1 { margin: 0; font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
         .btn {
-            background-color: var(--neon-cyan); color: #000;
-            border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer;
+            background-color: var(--neon-cyan); color: #000; border: none; 
+            padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer;
         }
-        .controls {
-            display: flex; gap: 8px; padding: 12px 20px 0 20px;
-        }
+        .controls { display: flex; gap: 8px; padding: 12px 20px 0 20px; }
         .btn-measure { background-color: #238636; color: #fff; flex: 1.2; font-size: 0.9rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-measure.active { background-color: var(--neon-pink); animation: pulse 1.5s infinite; }
         .btn-measure.review { background-color: #d29922; }
@@ -44,28 +41,28 @@
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         
         .dashboard { padding: 12px 20px; flex-grow: 1; display: flex; flex-direction: column; }
-        
         .gait-badge {
             align-self: center; background-color: #21262d; border: 1px solid #30363d;
             padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold;
-            color: var(--neon-yellow); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--neon-yellow); margin-bottom: 10px; text-transform: uppercase;
         }
-        
         .kpi-container { display: flex; gap: 10px; margin-bottom: 10px; }
         .kpi-box {
-            background-color: var(--card-bg); padding: 12px; border-radius: 10px;
+            background-color: var(--card-bg); padding: 10px; border-radius: 10px;
             flex: 1; text-align: center; border: 1px solid #30363d;
         }
-        .kpi-title { font-size: 0.75rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; }
-        .kpi-value { font-size: 1.5rem; font-weight: bold; color: var(--neon-cyan); }
+        .kpi-title { font-size: 0.7rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; }
+        .kpi-value { font-size: 1.3rem; font-weight: bold; color: var(--neon-cyan); }
         .kpi-value.pink { color: var(--neon-pink); }
         .kpi-value.yellow { color: var(--neon-yellow); }
 
-        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 180px; }
-        
-        .gait-distribution {
-            display: none; height: 8px; width: 100%; border-radius: 4px; margin-top: 10px; overflow: hidden;
+        #model3D-container { 
+            width: 100%; height: 160px; background-color: #0d1117; 
+            border: 1px solid #30363d; border-radius: 10px; margin-bottom: 10px; overflow: hidden;
         }
+        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 120px; }
+        
+        .gait-distribution { display: none; height: 8px; width: 100%; border-radius: 4px; margin-top: 10px; overflow: hidden; }
         .gait-distribution.show { display: flex; }
         .gait-segment { height: 100%; }
         .gait-schritt { background-color: #3fb950; }
@@ -77,14 +74,14 @@
 <body>
 
     <header>
-        <h1>K9MATICS PRO</h1>
+        <h1>K9MATICS 3D</h1>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
     <div class="controls">
-        <button id="measureBtn" class="btn btn-measure">Messung Starten</button>
-        <button id="exportBtn" class="btn btn-action">CSV Speichern</button>
-        <button id="pdfBtn" class="btn btn-action">PDF Bericht</button>
+        <button id="measureBtn" class="btn btn-measure">Starten</button>
+        <button id="exportBtn" class="btn btn-action">CSV</button>
+        <button id="pdfBtn" class="btn btn-action">PDF</button>
     </div>
 
     <div class="dashboard">
@@ -105,6 +102,8 @@
             </div>
         </div>
 
+        <div id="model3D-container"></div>
+
         <div class="chart-container">
             <canvas id="mainChart"></canvas>
             <div id="gaitDist" class="gait-distribution"></div>
@@ -116,59 +115,92 @@
         const CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         
         let bleDevice;
-        const LIVE_BUFFER_SIZE = 120;
+        const LIVE_BUFFER_SIZE = 100;
         let magData = Array(LIVE_BUFFER_SIZE).fill(0);
         let timeData = Array.from({length: LIVE_BUFFER_SIZE}, (_, i) => i);
         let buffer = "";
 
-        // Filter-Speicher für I2C-Dropouts
         let lastX = 0, lastY = 0, lastZ = -1.0;
-
-        // Messungs & Recording Variablen
-        let appState = "IDLE"; // IDLE, MEASURING, REVIEW
-        let recordedMags = [];
-        let recordedGaits = [];
-        let recordedSessionCSV = [];
+        let appState = "IDLE"; 
+        let recordedMags = [], recordedGaits = [], recordedSessionCSV = [];
         let recordStartTime = 0;
         let activeGait = "Ruhe";
-        let liveInterval;
 
-        // Chart.js Setup
+        // --- 3D SETUP (Three.js) ---
+        const container3D = document.getElementById('model3D-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, container3D.clientWidth / container3D.clientHeight, 0.1, 100);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(container3D.clientWidth, container3D.clientHeight);
+        container3D.appendChild(renderer.domElement);
+
+        const geometry = new THREE.BoxGeometry(2, 0.4, 3); // Repräsentiert den Sensor/Rücken
+        const material = new THREE.MeshNormalMaterial(); // Farbige Flächen zur Orientierung
+        const sensor3D = new THREE.Mesh(geometry, material);
+        
+        const edgeGeo = new THREE.EdgesGeometry(geometry);
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 });
+        const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+        sensor3D.add(edges);
+        
+        scene.add(sensor3D);
+        camera.position.set(4, 3, 5);
+        camera.lookAt(0, 0, 0);
+
+        let filterPitch = 0, filterRoll = 0, filterYaw = 0;
+        let lastFilterTime = Date.now();
+
+        function update3DModel(aX, aY, aZ, gX, gY, gZ) {
+            const now = Date.now();
+            const dt = (now - lastFilterTime) / 1000.0;
+            lastFilterTime = now;
+
+            // Gyro in Rad/Sekunde umwandeln
+            const gxRad = gX * (Math.PI / 180);
+            const gyRad = gY * (Math.PI / 180);
+            const gzRad = gZ * (Math.PI / 180);
+
+            // Neigung aus Beschleunigung (Statisch)
+            const accRoll = Math.atan2(aY, Math.sqrt(aX*aX + aZ*aZ));
+            const accPitch = Math.atan2(-aX, Math.sqrt(aY*aY + aZ*aZ));
+
+            // Komplementärfilter (96% Gyroskop für schnelle Drehung, 4% Accelerometer gegen Drift)
+            filterRoll = 0.96 * (filterRoll + gxRad * dt) + 0.04 * accRoll;
+            filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
+            filterYaw += gzRad * dt; // Yaw kann nur übers Gyro ermittelt werden
+
+            // Modell anwenden
+            sensor3D.rotation.set(filterPitch, filterYaw, filterRoll);
+            renderer.render(scene, camera);
+        }
+
+        // Window Resize Handle für 3D
+        window.addEventListener('resize', () => {
+            camera.aspect = container3D.clientWidth / container3D.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container3D.clientWidth, container3D.clientHeight);
+            renderer.render(scene, camera);
+        });
+        renderer.render(scene, camera);
+
+        // --- CHART SETUP ---
         const ctx = document.getElementById('mainChart').getContext('2d');
         const mainChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: timeData,
-                datasets: [{
-                    label: 'Magnitude',
-                    data: magData, borderColor: '#00ffcc', borderWidth: 2,
-                    pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 204, 0.08)', tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                scales: { 
-                    x: { display: false }, 
-                    y: { min: 0, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } 
-                },
-                plugins: { legend: { display: false } }
-            }
+            data: { labels: timeData, datasets: [{ data: magData, borderColor: '#00ffcc', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 204, 0.08)', tension: 0.1 }] },
+            options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { min: 0, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } }, plugins: { legend: { display: false } } }
         });
 
-        // Peak Finder
         function findPeaks(data, height, distance) {
             let peaks = [];
             for (let i = 1; i < data.length - 1; i++) {
                 if (data[i] > height && data[i] > data[i - 1] && data[i] > data[i + 1]) {
-                    if (peaks.length === 0 || (i - peaks[peaks.length - 1].index) >= distance) {
-                        peaks.push({ index: i, value: data[i] });
-                    }
+                    if (peaks.length === 0 || (i - peaks[peaks.length - 1].index) >= distance) { peaks.push({ index: i, value: data[i] }); }
                 }
             }
             return peaks;
         }
 
-        // Automatische Gangarten-Erkennung
         function detectGait(peaks, recentAvgMag) {
             if (recentAvgMag < 1.12 && peaks.length === 0) return "Ruhe";
             if (peaks.length === 0) return "Bewegung";
@@ -196,7 +228,7 @@
                 btn.innerText = "Verbunden";
                 btn.style.backgroundColor = "#ff0055"; btn.style.color = "#fff";
                 document.getElementById('gaitStatus').innerText = "Status: Bereit";
-                liveInterval = setInterval(updateDashboard, 100);
+                setInterval(updateDashboard, 100);
             } catch (error) {
                 console.error(error);
                 document.getElementById('connectBtn').innerText = "Connect";
@@ -205,37 +237,34 @@
 
         function handleData(event) {
             if (appState === "REVIEW") return;
-
-            const value = new TextDecoder().decode(event.target.value);
-            buffer += value;
+            buffer += new TextDecoder().decode(event.target.value);
             let lines = buffer.split('\n');
             buffer = lines.pop(); 
-            
             const now = Date.now();
             
             for (let line of lines) {
-                const match = line.match(/X:([-\d\.]+)\s+Y:([-\d\.]+)\s+Z:([-\d\.]+)/);
+                // Neues Regex-Format für Accelerometer (AX, AY, AZ) & Gyroscope (GX, GY, GZ)
+                const match = line.match(/AX:([-\d\.]+)\s+AY:([-\d\.]+)\s+AZ:([-\d\.]+)\s+GX:([-\d\.]+)\s+GY:([-\d\.]+)\s+GZ:([-\d\.]+)/);
                 if (match) {
-                    let x = parseFloat(match[1]);
-                    let y = parseFloat(match[2]);
-                    let z = parseFloat(match[3]);
+                    let ax = parseFloat(match[1]), ay = parseFloat(match[2]), az = parseFloat(match[3]);
+                    let gx = parseFloat(match[4]), gy = parseFloat(match[5]), gz = parseFloat(match[6]);
 
-                    // Glitch-Filter
-                    if (z === 0 && Math.abs(lastZ) > 0.2) z = lastZ;
-                    if (x === 0 && Math.abs(lastX) > 0.2) x = lastX;
-                    if (y === 0 && Math.abs(lastY) > 0.2) y = lastY;
-                    lastX = x; lastY = y; lastZ = z;
+                    if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ;
+                    if (ax === 0 && Math.abs(lastX) > 0.2) ax = lastX;
+                    if (ay === 0 && Math.abs(lastY) > 0.2) ay = lastY;
+                    lastX = ax; lastY = ay; lastZ = az;
 
-                    const mag = Math.sqrt(x*x + y*y + z*z);
-                    
-                    magData.push(mag);
-                    magData.shift();
+                    // 3D Visualisierung aktualisieren
+                    update3DModel(ax, ay, az, gx, gy, gz);
+
+                    const mag = Math.sqrt(ax*ax + ay*ay + az*az);
+                    magData.push(mag); magData.shift();
 
                     if (appState === "MEASURING") {
                         const timestamp = ((now - recordStartTime) / 1000).toFixed(3);
                         recordedMags.push(mag);
                         recordedGaits.push(activeGait);
-                        recordedSessionCSV.push(`${timestamp},${x},${y},${z},${mag.toFixed(3)},${activeGait}`);
+                        recordedSessionCSV.push(`${timestamp},${ax},${ay},${az},${gx},${gy},${gz},${mag.toFixed(3)},${activeGait}`);
                     }
                 }
             }
@@ -244,43 +273,29 @@
         function updateDashboard() {
             if (appState === "REVIEW") return;
 
-            if (appState === "MEASURING") {
-                mainChart.data.datasets[0].borderColor = '#ff0055';
-                mainChart.data.datasets[0].backgroundColor = 'rgba(255, 0, 85, 0.08)';
-            } else {
-                mainChart.data.datasets[0].borderColor = '#00ffcc';
-                mainChart.data.datasets[0].backgroundColor = 'rgba(0, 255, 204, 0.08)';
-            }
+            mainChart.data.datasets[0].borderColor = appState === "MEASURING" ? '#ff0055' : '#00ffcc';
+            mainChart.data.datasets[0].backgroundColor = appState === "MEASURING" ? 'rgba(255, 0, 85, 0.08)' : 'rgba(0, 255, 204, 0.08)';
             mainChart.update();
 
             const peaks = findPeaks(magData, 1.25, 7);
             const recentAvg = magData.slice(-20).reduce((a, b) => a + b, 0) / 20;
-            
             activeGait = detectGait(peaks, recentAvg);
             
-            if (appState === "MEASURING") {
-                document.getElementById('gaitStatus').innerText = `🔴 Aufzeichnung... | ${activeGait}`;
-            } else {
-                document.getElementById('gaitStatus').innerText = `Live: ${activeGait}`;
-            }
+            document.getElementById('gaitStatus').innerText = appState === "MEASURING" ? `🔴 Aufzeichnung... | ${activeGait}` : `Live: ${activeGait}`;
 
             if (appState === "MEASURING") {
                 const allPeaks = findPeaks(recordedMags, 1.25, 7);
                 document.getElementById('valSteps').innerText = allPeaks.length;
-                
                 if (allPeaks.length > 0) {
                     const peakVals = allPeaks.map(p => p.value);
                     const meanImpact = peakVals.reduce((a, b) => a + b, 0) / peakVals.length;
                     document.getElementById('valImpact').innerText = meanImpact.toFixed(2) + " G";
 
                     if (peakVals.length >= 4) {
-                        const lefts = peakVals.filter((_, i) => i % 2 === 0);
-                        const rights = peakVals.filter((_, i) => i % 2 !== 0);
+                        const lefts = peakVals.filter((_, i) => i % 2 === 0), rights = peakVals.filter((_, i) => i % 2 !== 0);
                         if (lefts.length > 0 && rights.length > 0) {
-                            const meanL = lefts.reduce((a, b) => a + b, 0) / lefts.length;
-                            const meanR = rights.reduce((a, b) => a + b, 0) / rights.length;
-                            const asym = Math.abs(meanL - meanR) / ((meanL + meanR) / 2) * 100;
-                            document.getElementById('valAsym').innerText = asym.toFixed(1) + "%";
+                            const meanL = lefts.reduce((a, b) => a + b, 0) / lefts.length, meanR = rights.reduce((a, b) => a + b, 0) / rights.length;
+                            document.getElementById('valAsym').innerText = (Math.abs(meanL - meanR) / ((meanL + meanR) / 2) * 100).toFixed(1) + "%";
                         }
                     }
                 }
@@ -288,8 +303,7 @@
         }
 
         function showReview() {
-            const labels = Array.from({length: recordedMags.length}, (_, i) => i);
-            mainChart.data.labels = labels;
+            mainChart.data.labels = Array.from({length: recordedMags.length}, (_, i) => i);
             mainChart.data.datasets[0].data = recordedMags;
             mainChart.data.datasets[0].borderColor = '#ffcc00';
             mainChart.data.datasets[0].backgroundColor = 'rgba(255, 204, 0, 0.08)';
@@ -302,7 +316,6 @@
             const total = recordedGaits.length || 1;
             const distDiv = document.getElementById('gaitDist');
             distDiv.innerHTML = '';
-            
             const colors = { "Schritt": "gait-schritt", "Trab": "gait-trab", "Galopp": "gait-galopp", "Ruhe": "gait-ruhe", "Bewegung": "gait-ruhe" };
             
             for (const [gait, count] of Object.entries(counts)) {
@@ -320,120 +333,49 @@
         }
 
         document.getElementById('measureBtn').addEventListener('click', () => {
-            const measureBtn = document.getElementById('measureBtn');
-            const exportBtn = document.getElementById('exportBtn');
-            const pdfBtn = document.getElementById('pdfBtn');
+            const btn = document.getElementById('measureBtn'), exp = document.getElementById('exportBtn'), pdf = document.getElementById('pdfBtn');
             const distDiv = document.getElementById('gaitDist');
             
             if (appState === "IDLE") {
-                appState = "MEASURING";
-                recordStartTime = Date.now();
-                recordedSessionCSV = ["Time_Sec,X,Y,Z,Magnitude,Gangart"];
-                recordedMags = [];
-                recordedGaits = [];
-                distDiv.classList.remove('show');
-                
-                measureBtn.innerText = "Messung Stoppen";
-                measureBtn.classList.add("active");
-                measureBtn.classList.remove("review");
-                exportBtn.classList.remove("ready");
-                pdfBtn.classList.remove("pdf-ready");
-                
-                document.getElementById('valAsym').innerText = "...";
-                document.getElementById('valImpact').innerText = "...";
-                document.getElementById('valSteps').innerText = "0";
-
+                appState = "MEASURING"; recordStartTime = Date.now();
+                recordedSessionCSV = ["Time_Sec,AX,AY,AZ,GX,GY,GZ,Magnitude,Gangart"];
+                recordedMags = []; recordedGaits = []; distDiv.classList.remove('show');
+                btn.innerText = "Stoppen"; btn.classList.add("active"); btn.classList.remove("review");
+                exp.classList.remove("ready"); pdf.classList.remove("pdf-ready");
+                document.getElementById('valAsym').innerText = "..."; document.getElementById('valImpact').innerText = "..."; document.getElementById('valSteps').innerText = "0";
             } else if (appState === "MEASURING") {
-                appState = "REVIEW";
-                measureBtn.innerText = "Live / Neue Messung";
-                measureBtn.classList.remove("active");
-                measureBtn.classList.add("review");
-                
-                if (recordedSessionCSV.length > 1) {
-                    exportBtn.classList.add("ready");
-                    pdfBtn.classList.add("pdf-ready");
-                    showReview();
-                }
-
+                appState = "REVIEW"; btn.innerText = "Neue Messung"; btn.classList.remove("active"); btn.classList.add("review");
+                if (recordedSessionCSV.length > 1) { exp.classList.add("ready"); pdf.classList.add("pdf-ready"); showReview(); }
             } else if (appState === "REVIEW") {
-                appState = "IDLE";
-                measureBtn.innerText = "Messung Starten";
-                measureBtn.classList.remove("review");
-                exportBtn.classList.remove("ready");
-                pdfBtn.classList.remove("pdf-ready");
-                distDiv.classList.remove('show');
-                
-                mainChart.data.labels = timeData;
-                mainChart.data.datasets[0].data = magData;
-                mainChart.options.scales.x.display = false;
-                mainChart.update();
-                
-                document.getElementById('valAsym').innerText = "-- %";
-                document.getElementById('valImpact').innerText = "-- G";
-                document.getElementById('valSteps').innerText = "0";
+                appState = "IDLE"; btn.innerText = "Starten"; btn.classList.remove("review");
+                exp.classList.remove("ready"); pdf.classList.remove("pdf-ready"); distDiv.classList.remove('show');
+                mainChart.data.labels = timeData; mainChart.data.datasets[0].data = magData; mainChart.options.scales.x.display = false; mainChart.update();
+                document.getElementById('valAsym').innerText = "-- %"; document.getElementById('valImpact').innerText = "-- G"; document.getElementById('valSteps').innerText = "0";
                 document.getElementById('gaitStatus').innerText = "Status: Bereit";
             }
         });
 
-        // CSV Export
         document.getElementById('exportBtn').addEventListener('click', () => {
             if (recordedSessionCSV.length <= 1) return;
-            const csvContent = recordedSessionCSV.join("\n");
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            const dateStr = new Date().toISOString().slice(0,19).replace(/[:T]/g, "-");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `k9_lauf_${dateStr}.csv`);
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(new Blob([recordedSessionCSV.join("\n")], { type: 'text/csv;charset=utf-8;' }));
+            link.download = `k9_lauf_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.csv`;
             link.click();
-            document.body.removeChild(link);
         });
 
-        // PDF Bericht Export
         document.getElementById('pdfBtn').addEventListener('click', () => {
             if (appState !== "REVIEW") return;
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Titel & Kopfzeile
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(16);
-            doc.text("K9MATICS PRO - Biomechanischer Laufbericht", 14, 20);
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.text(`Datum / Uhrzeit: ${new Date().toLocaleString()}`, 14, 28);
-
-            doc.setDrawColor(200, 200, 200);
-            doc.line(14, 33, 196, 33);
-
-            // Messwerte / KPIs
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.text("Zusammenfassung der Messwerte:", 14, 43);
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            const asymVal = document.getElementById('valAsym').innerText;
-            const impactVal = document.getElementById('valImpact').innerText;
-            const stepsVal = document.getElementById('valSteps').innerText;
-
-            doc.text(`• Asymmetrie: ${asymVal}`, 18, 52);
-            doc.text(`• Mittlere Stoßkraft: ${impactVal}`, 18, 60);
-            doc.text(`• Gesamte Schritte: ${stepsVal}`, 18, 68);
-
-            // Diagramm als Bild einfügen
-            const chartImage = mainChart.toBase64Image();
-            doc.addImage(chartImage, 'PNG', 14, 78, 182, 90);
-
-            // Fußzeile
-            doc.setFontSize(9);
-            doc.setTextColor(120, 120, 120);
-            doc.text("Erstellt mit K9matics Mobile Pro", 14, 285);
-
-            const dateStr = new Date().toISOString().slice(0,19).replace(/[:T]/g, "-");
-            doc.save(`k9_lauf_bericht_${dateStr}.pdf`);
+            const doc = new window.jspdf.jsPDF();
+            doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text("K9MATICS PRO - Laufbericht", 14, 20);
+            doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(`Datum: ${new Date().toLocaleString()}`, 14, 28);
+            doc.setDrawColor(200, 200, 200); doc.line(14, 33, 196, 33);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.text("Messwerte:", 14, 43);
+            doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+            doc.text(`Asymmetrie: ${document.getElementById('valAsym').innerText}`, 14, 52);
+            doc.text(`Mittlere Stoßkraft: ${document.getElementById('valImpact').innerText}`, 14, 60);
+            doc.text(`Schritte: ${document.getElementById('valSteps').innerText}`, 14, 68);
+            doc.addImage(mainChart.toBase64Image(), 'PNG', 14, 78, 182, 90);
+            doc.save(`k9_lauf_bericht_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.pdf`);
         });
 
         document.getElementById('connectBtn').addEventListener('click', connectBluetooth);
