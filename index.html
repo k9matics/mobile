@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>K9matics Mobile Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --bg: #0d1117;
@@ -32,13 +33,14 @@
             border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer;
         }
         .controls {
-            display: flex; gap: 10px; padding: 12px 20px 0 20px;
+            display: flex; gap: 8px; padding: 12px 20px 0 20px;
         }
-        .btn-measure { background-color: #238636; color: #fff; flex: 1; font-size: 0.95rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
+        .btn-measure { background-color: #238636; color: #fff; flex: 1.2; font-size: 0.9rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-measure.active { background-color: var(--neon-pink); animation: pulse 1.5s infinite; }
         .btn-measure.review { background-color: #d29922; }
-        .btn-export { background-color: #30363d; color: #8b949e; flex: 1; pointer-events: none; border-radius: 8px; border: none; font-weight: bold; }
-        .btn-export.ready { background-color: #1f6beb; color: #fff; pointer-events: auto; }
+        .btn-action { background-color: #30363d; color: #8b949e; flex: 1; pointer-events: none; border-radius: 8px; border: none; font-weight: bold; font-size: 0.85rem; }
+        .btn-action.ready { background-color: #1f6beb; color: #fff; pointer-events: auto; }
+        .btn-action.pdf-ready { background-color: #8957e5; color: #fff; pointer-events: auto; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         
         .dashboard { padding: 12px 20px; flex-grow: 1; display: flex; flex-direction: column; }
@@ -81,7 +83,8 @@
 
     <div class="controls">
         <button id="measureBtn" class="btn btn-measure">Messung Starten</button>
-        <button id="exportBtn" class="btn btn-export">CSV Speichern</button>
+        <button id="exportBtn" class="btn btn-action">CSV Speichern</button>
+        <button id="pdfBtn" class="btn btn-action">PDF Bericht</button>
     </div>
 
     <div class="dashboard">
@@ -201,7 +204,7 @@
         }
 
         function handleData(event) {
-            if (appState === "REVIEW") return; // Ignoriere neue Daten im Review-Modus
+            if (appState === "REVIEW") return;
 
             const value = new TextDecoder().decode(event.target.value);
             buffer += value;
@@ -241,17 +244,15 @@
         function updateDashboard() {
             if (appState === "REVIEW") return;
 
-            // Chart Update (Live oder Measure)
             if (appState === "MEASURING") {
-                mainChart.data.datasets[0].borderColor = '#ff0055'; // Rote Linie während Messung
+                mainChart.data.datasets[0].borderColor = '#ff0055';
                 mainChart.data.datasets[0].backgroundColor = 'rgba(255, 0, 85, 0.08)';
             } else {
-                mainChart.data.datasets[0].borderColor = '#00ffcc'; // Cyan im Idle
+                mainChart.data.datasets[0].borderColor = '#00ffcc';
                 mainChart.data.datasets[0].backgroundColor = 'rgba(0, 255, 204, 0.08)';
             }
             mainChart.update();
 
-            // Auswertung
             const peaks = findPeaks(magData, 1.25, 7);
             const recentAvg = magData.slice(-20).reduce((a, b) => a + b, 0) / 20;
             
@@ -263,9 +264,7 @@
                 document.getElementById('gaitStatus').innerText = `Live: ${activeGait}`;
             }
 
-            // KPIs Live updaten während Messung
             if (appState === "MEASURING") {
-                // Wir werten den bisherigen aufgenommenen Bereich aus, nicht nur den Buffer
                 const allPeaks = findPeaks(recordedMags, 1.25, 7);
                 document.getElementById('valSteps').innerText = allPeaks.length;
                 
@@ -289,16 +288,14 @@
         }
 
         function showReview() {
-            // Chart friert den aufgenommenen Bereich ein
             const labels = Array.from({length: recordedMags.length}, (_, i) => i);
             mainChart.data.labels = labels;
             mainChart.data.datasets[0].data = recordedMags;
-            mainChart.data.datasets[0].borderColor = '#ffcc00'; // Gelb für Review
+            mainChart.data.datasets[0].borderColor = '#ffcc00';
             mainChart.data.datasets[0].backgroundColor = 'rgba(255, 204, 0, 0.08)';
-            mainChart.options.scales.x.display = true; // Zeige x-Achse leicht an
+            mainChart.options.scales.x.display = true;
             mainChart.update();
 
-            // Gangarten-Verteilung berechnen und anzeigen
             let counts = { "Ruhe": 0, "Schritt": 0, "Trab": 0, "Galopp": 0, "Bewegung": 0 };
             recordedGaits.forEach(g => { if(counts[g] !== undefined) counts[g]++; });
             
@@ -325,10 +322,10 @@
         document.getElementById('measureBtn').addEventListener('click', () => {
             const measureBtn = document.getElementById('measureBtn');
             const exportBtn = document.getElementById('exportBtn');
+            const pdfBtn = document.getElementById('pdfBtn');
             const distDiv = document.getElementById('gaitDist');
             
             if (appState === "IDLE") {
-                // START MEASUREMENT
                 appState = "MEASURING";
                 recordStartTime = Date.now();
                 recordedSessionCSV = ["Time_Sec,X,Y,Z,Magnitude,Gangart"];
@@ -340,13 +337,13 @@
                 measureBtn.classList.add("active");
                 measureBtn.classList.remove("review");
                 exportBtn.classList.remove("ready");
+                pdfBtn.classList.remove("pdf-ready");
                 
                 document.getElementById('valAsym').innerText = "...";
                 document.getElementById('valImpact').innerText = "...";
                 document.getElementById('valSteps').innerText = "0";
 
             } else if (appState === "MEASURING") {
-                // STOP MEASUREMENT & SHOW REVIEW
                 appState = "REVIEW";
                 measureBtn.innerText = "Live / Neue Messung";
                 measureBtn.classList.remove("active");
@@ -354,18 +351,18 @@
                 
                 if (recordedSessionCSV.length > 1) {
                     exportBtn.classList.add("ready");
+                    pdfBtn.classList.add("pdf-ready");
                     showReview();
                 }
 
             } else if (appState === "REVIEW") {
-                // BACK TO LIVE IDLE
                 appState = "IDLE";
                 measureBtn.innerText = "Messung Starten";
                 measureBtn.classList.remove("review");
                 exportBtn.classList.remove("ready");
+                pdfBtn.classList.remove("pdf-ready");
                 distDiv.classList.remove('show');
                 
-                // Chart zurücksetzen
                 mainChart.data.labels = timeData;
                 mainChart.data.datasets[0].data = magData;
                 mainChart.options.scales.x.display = false;
@@ -391,6 +388,52 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        });
+
+        // PDF Bericht Export
+        document.getElementById('pdfBtn').addEventListener('click', () => {
+            if (appState !== "REVIEW") return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Titel & Kopfzeile
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("K9MATICS PRO - Biomechanischer Laufbericht", 14, 20);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text(`Datum / Uhrzeit: ${new Date().toLocaleString()}`, 14, 28);
+
+            doc.setDrawColor(200, 200, 200);
+            doc.line(14, 33, 196, 33);
+
+            // Messwerte / KPIs
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("Zusammenfassung der Messwerte:", 14, 43);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            const asymVal = document.getElementById('valAsym').innerText;
+            const impactVal = document.getElementById('valImpact').innerText;
+            const stepsVal = document.getElementById('valSteps').innerText;
+
+            doc.text(`• Asymmetrie: ${asymVal}`, 18, 52);
+            doc.text(`• Mittlere Stoßkraft: ${impactVal}`, 18, 60);
+            doc.text(`• Gesamte Schritte: ${stepsVal}`, 18, 68);
+
+            // Diagramm als Bild einfügen
+            const chartImage = mainChart.toBase64Image();
+            doc.addImage(chartImage, 'PNG', 14, 78, 182, 90);
+
+            // Fußzeile
+            doc.setFontSize(9);
+            doc.setTextColor(120, 120, 120);
+            doc.text("Erstellt mit K9matics Mobile Pro", 14, 285);
+
+            const dateStr = new Date().toISOString().slice(0,19).replace(/[:T]/g, "-");
+            doc.save(`k9_lauf_bericht_${dateStr}.pdf`);
         });
 
         document.getElementById('connectBtn').addEventListener('click', connectBluetooth);
