@@ -3,35 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v3.2</title>
+    <title>K9matics Pro 3D v3.3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        :root {
-            --bg: #0d1117;
-            --card-bg: #161b22;
-            --neon-cyan: #00ffcc;
-            --neon-pink: #ff0055;
-            --neon-yellow: #ffcc00;
-            --text: #c9d1d9;
-        }
-        body {
-            margin: 0; padding: 0; background-color: var(--bg); color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex; flex-direction: column; height: 100vh;
-        }
-        header {
-            padding: 12px 20px; background-color: var(--card-bg);
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #30363d;
-        }
+        :root { --bg: #0d1117; --card-bg: #161b22; --neon-cyan: #00ffcc; --neon-pink: #ff0055; --neon-yellow: #ffcc00; --text: #c9d1d9; }
+        body { margin: 0; padding: 0; background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        header { padding: 12px 20px; background-color: var(--card-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; }
         h1 { margin: 0; font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
         .version { font-size: 0.7em; color: var(--neon-pink); vertical-align: super; }
-        .btn {
-            background-color: var(--neon-cyan); color: #000; border: none; 
-            padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer;
-        }
+        .btn { background-color: var(--neon-cyan); color: #000; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .controls { display: flex; gap: 8px; padding: 12px 20px 0 20px; }
         .btn-measure { background-color: #238636; color: #fff; flex: 1.2; font-size: 0.9rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-measure.active { background-color: var(--neon-pink); animation: pulse 1.5s infinite; }
@@ -40,31 +22,17 @@
         .btn-action.ready { background-color: #1f6beb; color: #fff; pointer-events: auto; }
         .btn-action.pdf-ready { background-color: #8957e5; color: #fff; pointer-events: auto; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        
         .dashboard { padding: 12px 20px; flex-grow: 1; display: flex; flex-direction: column; }
-        .gait-badge {
-            align-self: center; background-color: #21262d; border: 1px solid #30363d;
-            padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold;
-            color: var(--neon-yellow); margin-bottom: 10px; text-transform: uppercase;
-        }
+        .gait-badge { align-self: center; background-color: #21262d; border: 1px solid #30363d; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; color: var(--neon-yellow); margin-bottom: 10px; text-transform: uppercase; }
         .kpi-container { display: flex; gap: 10px; margin-bottom: 10px; }
-        .kpi-box {
-            background-color: var(--card-bg); padding: 10px; border-radius: 10px;
-            flex: 1; text-align: center; border: 1px solid #30363d;
-        }
+        .kpi-box { background-color: var(--card-bg); padding: 10px; border-radius: 10px; flex: 1; text-align: center; border: 1px solid #30363d; }
         .kpi-title { font-size: 0.7rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; }
         .kpi-value { font-size: 1.3rem; font-weight: bold; color: var(--neon-cyan); }
         .kpi-value.pink { color: var(--neon-pink); }
         .kpi-value.yellow { color: var(--neon-yellow); }
-
-        #model3D-container { 
-            width: 100%; height: 160px; background-color: #0d1117; 
-            border: 1px solid #30363d; border-radius: 10px; overflow: hidden;
-        }
+        #model3D-container { width: 100%; height: 160px; background-color: #0d1117; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
         #debugRaw { font-size: 0.65rem; color: #8b949e; text-align: center; margin: 4px 0 10px 0; font-family: monospace; }
-        
         .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 120px; }
-        
         .gait-distribution { display: none; height: 8px; width: 100%; border-radius: 4px; margin-top: 10px; overflow: hidden; }
         .gait-distribution.show { display: flex; }
         .gait-segment { height: 100%; }
@@ -77,7 +45,7 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">v3.2</span></h1>
+        <h1>K9MATICS <span class="version">v3.3</span></h1>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
@@ -219,11 +187,7 @@
                     { label: 'Z', data: zData, borderColor: '#58a6ff', borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false }
                 ] 
             },
-            options: { 
-                responsive: true, maintainAspectRatio: false, animation: false, 
-                scales: { x: { display: false }, y: { min: -3, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } }, 
-                plugins: { legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 12 } } } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { min: -3, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } }, plugins: { legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 12 } } } }
         });
 
         function findPeaks(data, height, distance) {
@@ -283,16 +247,17 @@
                 
                 document.getElementById('debugRaw').innerText = "Raw: " + line;
 
-                // --- KUGELSICHERER PARSER ---
                 let ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
                 let dataFound = false;
 
-                let m = line.match(/AX:\s*([-\d\.]+)/i); if(m) { ax = parseFloat(m[1]); dataFound = true; }
-                m = line.match(/AY:\s*([-\d\.]+)/i); if(m) { ay = parseFloat(m[1]); dataFound = true; }
-                m = line.match(/AZ:\s*([-\d\.]+)/i); if(m) { az = parseFloat(m[1]); dataFound = true; }
-                m = line.match(/GX:\s*([-\d\.]+)/i); if(m) { gx = parseFloat(m[1]); }
-                m = line.match(/GY:\s*([-\d\.]+)/i); if(m) { gy = parseFloat(m[1]); }
-                m = line.match(/GZ:\s*([-\d\.]+)/i); if(m) { gz = parseFloat(m[1]); }
+                // Neuer Filter: Sucht jetzt auch nach dem alten Format ohne "A"
+                let mX = line.match(/(?:A?X):\s*([-\d\.]+)/i); if(mX) { ax = parseFloat(mX[1]); dataFound = true; }
+                let mY = line.match(/(?:A?Y):\s*([-\d\.]+)/i); if(mY) { ay = parseFloat(mY[1]); dataFound = true; }
+                let mZ = line.match(/(?:A?Z):\s*([-\d\.]+)/i); if(mZ) { az = parseFloat(mZ[1]); dataFound = true; }
+                
+                let mGX = line.match(/GX:\s*([-\d\.]+)/i); if(mGX) { gx = parseFloat(mGX[1]); }
+                let mGY = line.match(/GY:\s*([-\d\.]+)/i); if(mGY) { gy = parseFloat(mGY[1]); }
+                let mGZ = line.match(/GZ:\s*([-\d\.]+)/i); if(mGZ) { gz = parseFloat(mGZ[1]); }
 
                 if (dataFound) {
                     if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ;
