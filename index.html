@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Mobile Pro 3D</title>
+    <title>K9matics Pro 3D</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -74,7 +74,7 @@
 <body>
 
     <header>
-        <h1>K9MATICS 3D</h1>
+        <h1>K9MATICS PRO</h1>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
@@ -126,7 +126,7 @@
         let recordStartTime = 0;
         let activeGait = "Ruhe";
 
-        // --- 3D SETUP (Three.js) ---
+        // --- 3D SETUP (Three.js Cyber-Dog) ---
         const container3D = document.getElementById('model3D-container');
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, container3D.clientWidth / container3D.clientHeight, 0.1, 100);
@@ -134,18 +134,38 @@
         renderer.setSize(container3D.clientWidth, container3D.clientHeight);
         container3D.appendChild(renderer.domElement);
 
-        const geometry = new THREE.BoxGeometry(2, 0.4, 3); // Repräsentiert den Sensor/Rücken
-        const material = new THREE.MeshNormalMaterial(); // Farbige Flächen zur Orientierung
-        const sensor3D = new THREE.Mesh(geometry, material);
-        
-        const edgeGeo = new THREE.EdgesGeometry(geometry);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        const sensor3D = new THREE.Group(); 
+        const bodyMat = new THREE.MeshPhongMaterial({ color: 0x161b22, flatShading: true });
         const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 });
-        const edges = new THREE.LineSegments(edgeGeo, edgeMat);
-        sensor3D.add(edges);
-        
+
+        function createDogPart(w, h, d, x, y, z, rotX = 0) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geo, bodyMat);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat);
+            mesh.add(edges);
+            mesh.position.set(x, y, z);
+            mesh.rotation.x = rotX;
+            sensor3D.add(mesh);
+        }
+
+        createDogPart(0.6, 0.6, 1.6, 0, 0, 0); // Torso
+        createDogPart(0.5, 0.5, 0.5, 0, 0.5, 0.8); // Kopf
+        createDogPart(0.3, 0.3, 0.4, 0, 0.3, 1.2); // Schnauze
+        createDogPart(0.2, 0.8, 0.2, 0.25, -0.7, 0.6); // VL
+        createDogPart(0.2, 0.8, 0.2, -0.25, -0.7, 0.6); // VR
+        createDogPart(0.2, 0.8, 0.2, 0.25, -0.7, -0.6); // HL
+        createDogPart(0.2, 0.8, 0.2, -0.25, -0.7, -0.6); // HR
+        createDogPart(0.1, 0.6, 0.1, 0, 0.3, -0.9, -Math.PI / 4); // Schwanz
+
         scene.add(sensor3D);
-        camera.position.set(4, 3, 5);
-        camera.lookAt(0, 0, 0);
+        camera.position.set(3.5, 2.5, 4.5);
+        camera.lookAt(0, -0.2, 0);
 
         let filterPitch = 0, filterRoll = 0, filterYaw = 0;
         let lastFilterTime = Date.now();
@@ -155,26 +175,21 @@
             const dt = (now - lastFilterTime) / 1000.0;
             lastFilterTime = now;
 
-            // Gyro in Rad/Sekunde umwandeln
             const gxRad = gX * (Math.PI / 180);
             const gyRad = gY * (Math.PI / 180);
             const gzRad = gZ * (Math.PI / 180);
 
-            // Neigung aus Beschleunigung (Statisch)
             const accRoll = Math.atan2(aY, Math.sqrt(aX*aX + aZ*aZ));
             const accPitch = Math.atan2(-aX, Math.sqrt(aY*aY + aZ*aZ));
 
-            // Komplementärfilter (96% Gyroskop für schnelle Drehung, 4% Accelerometer gegen Drift)
             filterRoll = 0.96 * (filterRoll + gxRad * dt) + 0.04 * accRoll;
             filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
-            filterYaw += gzRad * dt; // Yaw kann nur übers Gyro ermittelt werden
+            filterYaw += gzRad * dt; 
 
-            // Modell anwenden
             sensor3D.rotation.set(filterPitch, filterYaw, filterRoll);
             renderer.render(scene, camera);
         }
 
-        // Window Resize Handle für 3D
         window.addEventListener('resize', () => {
             camera.aspect = container3D.clientWidth / container3D.clientHeight;
             camera.updateProjectionMatrix();
@@ -243,18 +258,14 @@
             const now = Date.now();
             
             for (let line of lines) {
-                // Neues Regex-Format für Accelerometer (AX, AY, AZ) & Gyroscope (GX, GY, GZ)
                 const match = line.match(/AX:([-\d\.]+)\s+AY:([-\d\.]+)\s+AZ:([-\d\.]+)\s+GX:([-\d\.]+)\s+GY:([-\d\.]+)\s+GZ:([-\d\.]+)/);
                 if (match) {
                     let ax = parseFloat(match[1]), ay = parseFloat(match[2]), az = parseFloat(match[3]);
                     let gx = parseFloat(match[4]), gy = parseFloat(match[5]), gz = parseFloat(match[6]);
-
+                    
                     if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ;
-                    if (ax === 0 && Math.abs(lastX) > 0.2) ax = lastX;
-                    if (ay === 0 && Math.abs(lastY) > 0.2) ay = lastY;
-                    lastX = ax; lastY = ay; lastZ = az;
+                    lastZ = az;
 
-                    // 3D Visualisierung aktualisieren
                     update3DModel(ax, ay, az, gx, gy, gz);
 
                     const mag = Math.sqrt(ax*ax + ay*ay + az*az);
