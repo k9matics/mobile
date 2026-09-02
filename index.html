@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v3.4</title>
+    <title>K9matics Pro 3D v3.5</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -45,7 +45,7 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">v3.4</span></h1>
+        <h1>K9MATICS <span class="version">v3.5</span></h1>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
@@ -130,14 +130,14 @@
             sensor3D.add(mesh);
         }
 
-        createDogPart(0.6, 0.6, 1.6, 0, 0, 0); // Torso
-        createDogPart(0.5, 0.5, 0.5, 0, 0.5, 0.8); // Kopf
-        createDogPart(0.3, 0.3, 0.4, 0, 0.3, 1.2); // Schnauze
-        createDogPart(0.2, 0.8, 0.2, 0.25, -0.7, 0.6); // VL
-        createDogPart(0.2, 0.8, 0.2, -0.25, -0.7, 0.6); // VR
-        createDogPart(0.2, 0.8, 0.2, 0.25, -0.7, -0.6); // HL
-        createDogPart(0.2, 0.8, 0.2, -0.25, -0.7, -0.6); // HR
-        createDogPart(0.1, 0.6, 0.1, 0, 0.3, -0.9, -Math.PI / 4); // Schwanz
+        createDogPart(0.6, 0.6, 1.6, 0, 0, 0); 
+        createDogPart(0.5, 0.5, 0.5, 0, 0.5, 0.8); 
+        createDogPart(0.3, 0.3, 0.4, 0, 0.3, 1.2); 
+        createDogPart(0.2, 0.8, 0.2, 0.25, -0.7, 0.6); 
+        createDogPart(0.2, 0.8, 0.2, -0.25, -0.7, 0.6); 
+        createDogPart(0.2, 0.8, 0.2, 0.25, -0.7, -0.6); 
+        createDogPart(0.2, 0.8, 0.2, -0.25, -0.7, -0.6); 
+        createDogPart(0.1, 0.6, 0.1, 0, 0.3, -0.9, -Math.PI / 4); 
 
         scene.add(sensor3D);
         camera.position.set(3.5, 2.5, 4.5);
@@ -158,7 +158,6 @@
             const accRoll = Math.atan2(aY, Math.sqrt(aX*aX + aZ*aZ));
             const accPitch = Math.atan2(-aX, Math.sqrt(aY*aY + aZ*aZ));
 
-            // Komplementärfilter zur Stabilisierung des 3D Modells
             filterRoll = 0.96 * (filterRoll + gxRad * dt) + 0.04 * accRoll;
             filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
             filterYaw += gzRad * dt; 
@@ -251,7 +250,6 @@
                 let ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
                 let dataFound = false;
 
-                // Stabiler Parser, der das alte und das neue Format versteht (z.B. AX:1.23 oder X:1.23)
                 let mX = line.match(/(?:A?X):\s*([-\d\.]+)/i); if(mX) { ax = parseFloat(mX[1]); dataFound = true; }
                 let mY = line.match(/(?:A?Y):\s*([-\d\.]+)/i); if(mY) { ay = parseFloat(mY[1]); dataFound = true; }
                 let mZ = line.match(/(?:A?Z):\s*([-\d\.]+)/i); if(mZ) { az = parseFloat(mZ[1]); dataFound = true; }
@@ -289,12 +287,19 @@
             mainChart.data.datasets[0].borderColor = appState === "MEASURING" ? '#ff0055' : '#00ffcc';
             mainChart.data.datasets[0].backgroundColor = appState === "MEASURING" ? 'rgba(255, 0, 85, 0.08)' : 'rgba(0, 255, 204, 0.08)';
             mainChart.update();
-            const peaks = findPeaks(magData, 1.25, 7);
-            const recentAvg = magData.slice(-20).reduce((a, b) => a + b, 0) / 20;
-            activeGait = detectGait(peaks, recentAvg);
+
+            // TUNING: Für die Live-Erkennung nur die letzten 35 Werte (ca. 1-2 Sekunden) ansehen!
+            const recentData = magData.slice(-35); 
+            const livePeaks = findPeaks(recentData, 1.25, 5); // Kürzere Distanz für schnellere Erkennung
+            
+            // Für die "Ruhe"-Erkennung sogar nur die allerletzten 10 Werte nehmen (blitzschnell)
+            const recentAvg = magData.slice(-10).reduce((a, b) => a + b, 0) / 10; 
+            
+            activeGait = detectGait(livePeaks, recentAvg);
             document.getElementById('gaitStatus').innerText = appState === "MEASURING" ? `🔴 Aufzeichnung... | ${activeGait}` : `Live: ${activeGait}`;
 
             if (appState === "MEASURING") {
+                // Für die Endauswertung weiterhin ALLE Daten nehmen
                 const allPeaks = findPeaks(recordedMags, 1.25, 7);
                 document.getElementById('valSteps').innerText = allPeaks.length;
                 if (allPeaks.length > 0) {
