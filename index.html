@@ -116,13 +116,18 @@
         
         let bleDevice;
         const LIVE_BUFFER_SIZE = 100;
+        
+        // Daten-Arrays für das Chart
         let magData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let xData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let yData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let zData = Array(LIVE_BUFFER_SIZE).fill(0);
         let timeData = Array.from({length: LIVE_BUFFER_SIZE}, (_, i) => i);
         let buffer = "";
 
         let lastX = 0, lastY = 0, lastZ = -1.0;
         let appState = "IDLE"; 
-        let recordedMags = [], recordedGaits = [], recordedSessionCSV = [];
+        let recordedMags = [], recordedX = [], recordedY = [], recordedZ = [], recordedGaits = [], recordedSessionCSV = [];
         let recordStartTime = 0;
         let activeGait = "Ruhe";
 
@@ -202,8 +207,27 @@
         const ctx = document.getElementById('mainChart').getContext('2d');
         const mainChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: timeData, datasets: [{ data: magData, borderColor: '#00ffcc', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 204, 0.08)', tension: 0.1 }] },
-            options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { min: 0, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } }, plugins: { legend: { display: false } } }
+            data: { 
+                labels: timeData, 
+                datasets: [
+                    { label: 'Kraft', data: magData, borderColor: '#00ffcc', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 204, 0.08)', tension: 0.1 },
+                    { label: 'X', data: xData, borderColor: '#ff0055', borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'Y', data: yData, borderColor: '#3fb950', borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'Z', data: zData, borderColor: '#58a6ff', borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false }
+                ] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                animation: false, 
+                scales: { 
+                    x: { display: false }, 
+                    y: { min: -3, max: 4, grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } 
+                }, 
+                plugins: { 
+                    legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 12 } } 
+                } 
+            }
         });
 
         function findPeaks(data, height, distance) {
@@ -269,11 +293,17 @@
                     update3DModel(ax, ay, az, gx, gy, gz);
 
                     const mag = Math.sqrt(ax*ax + ay*ay + az*az);
+                    
+                    // Arrays updaten
                     magData.push(mag); magData.shift();
+                    xData.push(ax); xData.shift();
+                    yData.push(ay); yData.shift();
+                    zData.push(az); zData.shift();
 
                     if (appState === "MEASURING") {
                         const timestamp = ((now - recordStartTime) / 1000).toFixed(3);
                         recordedMags.push(mag);
+                        recordedX.push(ax); recordedY.push(ay); recordedZ.push(az);
                         recordedGaits.push(activeGait);
                         recordedSessionCSV.push(`${timestamp},${ax},${ay},${az},${gx},${gy},${gz},${mag.toFixed(3)},${activeGait}`);
                     }
@@ -316,6 +346,10 @@
         function showReview() {
             mainChart.data.labels = Array.from({length: recordedMags.length}, (_, i) => i);
             mainChart.data.datasets[0].data = recordedMags;
+            mainChart.data.datasets[1].data = recordedX;
+            mainChart.data.datasets[2].data = recordedY;
+            mainChart.data.datasets[3].data = recordedZ;
+            
             mainChart.data.datasets[0].borderColor = '#ffcc00';
             mainChart.data.datasets[0].backgroundColor = 'rgba(255, 204, 0, 0.08)';
             mainChart.options.scales.x.display = true;
@@ -350,7 +384,8 @@
             if (appState === "IDLE") {
                 appState = "MEASURING"; recordStartTime = Date.now();
                 recordedSessionCSV = ["Time_Sec,AX,AY,AZ,GX,GY,GZ,Magnitude,Gangart"];
-                recordedMags = []; recordedGaits = []; distDiv.classList.remove('show');
+                recordedMags = []; recordedX = []; recordedY = []; recordedZ = []; recordedGaits = []; 
+                distDiv.classList.remove('show');
                 btn.innerText = "Stoppen"; btn.classList.add("active"); btn.classList.remove("review");
                 exp.classList.remove("ready"); pdf.classList.remove("pdf-ready");
                 document.getElementById('valAsym').innerText = "..."; document.getElementById('valImpact').innerText = "..."; document.getElementById('valSteps').innerText = "0";
@@ -360,7 +395,14 @@
             } else if (appState === "REVIEW") {
                 appState = "IDLE"; btn.innerText = "Starten"; btn.classList.remove("review");
                 exp.classList.remove("ready"); pdf.classList.remove("pdf-ready"); distDiv.classList.remove('show');
-                mainChart.data.labels = timeData; mainChart.data.datasets[0].data = magData; mainChart.options.scales.x.display = false; mainChart.update();
+                
+                mainChart.data.labels = timeData; 
+                mainChart.data.datasets[0].data = magData; 
+                mainChart.data.datasets[1].data = xData;
+                mainChart.data.datasets[2].data = yData;
+                mainChart.data.datasets[3].data = zData;
+                
+                mainChart.options.scales.x.display = false; mainChart.update();
                 document.getElementById('valAsym').innerText = "-- %"; document.getElementById('valImpact').innerText = "-- G"; document.getElementById('valSteps').innerText = "0";
                 document.getElementById('gaitStatus').innerText = "Status: Bereit";
             }
