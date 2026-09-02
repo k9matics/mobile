@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v3.1</title>
+    <title>K9matics Pro 3D v3.2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -77,7 +77,7 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">v3.1</span></h1>
+        <h1>K9MATICS <span class="version">v3.2</span></h1>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
@@ -283,11 +283,18 @@
                 
                 document.getElementById('debugRaw').innerText = "Raw: " + line;
 
-                const match = line.match(/AX:([-\d\.]+)\s+AY:([-\d\.]+)\s+AZ:([-\d\.]+)\s+GX:([-\d\.]+)\s+GY:([-\d\.]+)\s+GZ:([-\d\.]+)/);
-                if (match) {
-                    let ax = parseFloat(match[1]), ay = parseFloat(match[2]), az = parseFloat(match[3]);
-                    let gx = parseFloat(match[4]), gy = parseFloat(match[5]), gz = parseFloat(match[6]);
-                    
+                // --- KUGELSICHERER PARSER ---
+                let ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
+                let dataFound = false;
+
+                let m = line.match(/AX:\s*([-\d\.]+)/i); if(m) { ax = parseFloat(m[1]); dataFound = true; }
+                m = line.match(/AY:\s*([-\d\.]+)/i); if(m) { ay = parseFloat(m[1]); dataFound = true; }
+                m = line.match(/AZ:\s*([-\d\.]+)/i); if(m) { az = parseFloat(m[1]); dataFound = true; }
+                m = line.match(/GX:\s*([-\d\.]+)/i); if(m) { gx = parseFloat(m[1]); }
+                m = line.match(/GY:\s*([-\d\.]+)/i); if(m) { gy = parseFloat(m[1]); }
+                m = line.match(/GZ:\s*([-\d\.]+)/i); if(m) { gz = parseFloat(m[1]); }
+
+                if (dataFound) {
                     if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ;
                     lastZ = az;
 
@@ -313,15 +320,12 @@
 
         function updateDashboard() {
             if (appState === "REVIEW") return;
-
             mainChart.data.datasets[0].borderColor = appState === "MEASURING" ? '#ff0055' : '#00ffcc';
             mainChart.data.datasets[0].backgroundColor = appState === "MEASURING" ? 'rgba(255, 0, 85, 0.08)' : 'rgba(0, 255, 204, 0.08)';
             mainChart.update();
-
             const peaks = findPeaks(magData, 1.25, 7);
             const recentAvg = magData.slice(-20).reduce((a, b) => a + b, 0) / 20;
             activeGait = detectGait(peaks, recentAvg);
-            
             document.getElementById('gaitStatus').innerText = appState === "MEASURING" ? `🔴 Aufzeichnung... | ${activeGait}` : `Live: ${activeGait}`;
 
             if (appState === "MEASURING") {
@@ -331,7 +335,6 @@
                     const peakVals = allPeaks.map(p => p.value);
                     const meanImpact = peakVals.reduce((a, b) => a + b, 0) / peakVals.length;
                     document.getElementById('valImpact').innerText = meanImpact.toFixed(2) + " G";
-
                     if (peakVals.length >= 4) {
                         const lefts = peakVals.filter((_, i) => i % 2 === 0), rights = peakVals.filter((_, i) => i % 2 !== 0);
                         if (lefts.length > 0 && rights.length > 0) {
@@ -349,20 +352,16 @@
             mainChart.data.datasets[1].data = recordedX;
             mainChart.data.datasets[2].data = recordedY;
             mainChart.data.datasets[3].data = recordedZ;
-            
             mainChart.data.datasets[0].borderColor = '#ffcc00';
             mainChart.data.datasets[0].backgroundColor = 'rgba(255, 204, 0, 0.08)';
             mainChart.options.scales.x.display = true;
             mainChart.update();
-
             let counts = { "Ruhe": 0, "Schritt": 0, "Trab": 0, "Galopp": 0, "Bewegung": 0 };
             recordedGaits.forEach(g => { if(counts[g] !== undefined) counts[g]++; });
-            
             const total = recordedGaits.length || 1;
             const distDiv = document.getElementById('gaitDist');
             distDiv.innerHTML = '';
             const colors = { "Schritt": "gait-schritt", "Trab": "gait-trab", "Galopp": "gait-galopp", "Ruhe": "gait-ruhe", "Bewegung": "gait-ruhe" };
-            
             for (const [gait, count] of Object.entries(counts)) {
                 if (count > 0) {
                     const pct = (count / total) * 100;
@@ -377,11 +376,9 @@
             document.getElementById('gaitStatus').innerText = "Zusammenfassung der Messung";
         }
 
-        // --- HIER WAREN DIE BUTTONS VERSCHWUNDEN! ---
         document.getElementById('measureBtn').addEventListener('click', () => {
             const btn = document.getElementById('measureBtn'), exp = document.getElementById('exportBtn'), pdf = document.getElementById('pdfBtn');
             const distDiv = document.getElementById('gaitDist');
-            
             if (appState === "IDLE") {
                 appState = "MEASURING"; recordStartTime = Date.now();
                 recordedSessionCSV = ["Time_Sec,AX,AY,AZ,GX,GY,GZ,Magnitude,Gangart"];
@@ -396,13 +393,8 @@
             } else if (appState === "REVIEW") {
                 appState = "IDLE"; btn.innerText = "Starten"; btn.classList.remove("review");
                 exp.classList.remove("ready"); pdf.classList.remove("pdf-ready"); distDiv.classList.remove('show');
-                
-                mainChart.data.labels = timeData; 
-                mainChart.data.datasets[0].data = magData; 
-                mainChart.data.datasets[1].data = xData;
-                mainChart.data.datasets[2].data = yData;
-                mainChart.data.datasets[3].data = zData;
-                
+                mainChart.data.labels = timeData; mainChart.data.datasets[0].data = magData; 
+                mainChart.data.datasets[1].data = xData; mainChart.data.datasets[2].data = yData; mainChart.data.datasets[3].data = zData;
                 mainChart.options.scales.x.display = false; mainChart.update();
                 document.getElementById('valAsym').innerText = "-- %"; document.getElementById('valImpact').innerText = "-- G"; document.getElementById('valSteps').innerText = "0";
                 document.getElementById('gaitStatus').innerText = "Status: Bereit";
