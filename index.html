@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v3.5</title>
+    <title>K9matics Pro 3D v3.6</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root { --bg: #0d1117; --card-bg: #161b22; --neon-cyan: #00ffcc; --neon-pink: #ff0055; --neon-yellow: #ffcc00; --text: #c9d1d9; }
         body { margin: 0; padding: 0; background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; height: 100vh; }
-        header { padding: 12px 20px; background-color: var(--card-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; }
-        h1 { margin: 0; font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
+        header { padding: 12px 20px; background-color: var(--card-bg); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; gap: 8px; }
+        h1 { margin: 0; font-size: 1.1rem; color: #fff; letter-spacing: 1px; flex-grow: 1; }
         .version { font-size: 0.7em; color: var(--neon-pink); vertical-align: super; }
-        .btn { background-color: var(--neon-cyan); color: #000; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn { background-color: var(--neon-cyan); color: #000; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .btn-calib { background-color: #8957e5; color: #fff; }
         .controls { display: flex; gap: 8px; padding: 12px 20px 0 20px; }
         .btn-measure { background-color: #238636; color: #fff; flex: 1.2; font-size: 0.9rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-measure.active { background-color: var(--neon-pink); animation: pulse 1.5s infinite; }
@@ -45,7 +46,8 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">v3.5</span></h1>
+        <h1>K9MATICS <span class="version">v3.6</span></h1>
+        <button id="calibrateBtn" class="btn btn-calib">Nullpunkt</button>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
@@ -102,7 +104,9 @@
         let recordStartTime = 0;
         let activeGait = "Ruhe";
 
-        // --- 3D SETUP ---
+        // --- 3D SETUP & CALIBRATION ---
+        let pitchOffset = 0, rollOffset = 0, yawOffset = 0;
+        
         const container3D = document.getElementById('model3D-container');
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, container3D.clientWidth / container3D.clientHeight, 0.1, 100);
@@ -162,7 +166,8 @@
             filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
             filterYaw += gzRad * dt; 
 
-            sensor3D.rotation.set(filterPitch, filterYaw, filterRoll);
+            // Kalibrierung anwenden
+            sensor3D.rotation.set(filterPitch - pitchOffset, filterYaw - yawOffset, filterRoll - rollOffset);
             renderer.render(scene, camera);
         }
 
@@ -173,6 +178,15 @@
             renderer.render(scene, camera);
         });
         renderer.render(scene, camera);
+
+        // --- CALIBRATION ACTION ---
+        document.getElementById('calibrateBtn').addEventListener('click', () => {
+            pitchOffset = filterPitch;
+            rollOffset = filterRoll;
+            yawOffset = filterYaw;
+            document.getElementById('calibrateBtn').innerText = "OK ✓";
+            setTimeout(() => document.getElementById('calibrateBtn').innerText = "Nullpunkt", 2000);
+        });
 
         // --- CHART SETUP ---
         const ctx = document.getElementById('mainChart').getContext('2d');
@@ -288,18 +302,14 @@
             mainChart.data.datasets[0].backgroundColor = appState === "MEASURING" ? 'rgba(255, 0, 85, 0.08)' : 'rgba(0, 255, 204, 0.08)';
             mainChart.update();
 
-            // TUNING: Für die Live-Erkennung nur die letzten 35 Werte (ca. 1-2 Sekunden) ansehen!
             const recentData = magData.slice(-35); 
-            const livePeaks = findPeaks(recentData, 1.25, 5); // Kürzere Distanz für schnellere Erkennung
-            
-            // Für die "Ruhe"-Erkennung sogar nur die allerletzten 10 Werte nehmen (blitzschnell)
+            const livePeaks = findPeaks(recentData, 1.25, 5); 
             const recentAvg = magData.slice(-10).reduce((a, b) => a + b, 0) / 10; 
             
             activeGait = detectGait(livePeaks, recentAvg);
             document.getElementById('gaitStatus').innerText = appState === "MEASURING" ? `🔴 Aufzeichnung... | ${activeGait}` : `Live: ${activeGait}`;
 
             if (appState === "MEASURING") {
-                // Für die Endauswertung weiterhin ALLE Daten nehmen
                 const allPeaks = findPeaks(recordedMags, 1.25, 7);
                 document.getElementById('valSteps').innerText = allPeaks.length;
                 if (allPeaks.length > 0) {
