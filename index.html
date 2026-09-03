@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v4.2</title>
+    <title>K9matics Pro 3D v4.3</title>
     <!-- Externe Bibliotheken -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -60,7 +60,7 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">PRO v4.2</span></h1>
+        <h1>K9MATICS <span class="version">PRO v4.3</span></h1>
         <button id="calibrateBtn" class="btn btn-calib">Nullpunkt</button>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
@@ -144,7 +144,7 @@
         const sensor3D = new THREE.Group(); 
         scene.add(sensor3D);
 
-        // --- ECHTES MODELL LADEN MIT ZENTRIERUNG ---
+        // --- ECHTES MODELL LADEN MIT ZENTRIERUNG & ROTATION ---
         const loader = new THREE.OBJLoader();
         loader.load('13466_Canaan_Dog_v1_L3.obj', function (object) {
             
@@ -172,7 +172,10 @@
             const wrapper = new THREE.Group();
             wrapper.add(object);
             
-            // Skalierung je nach Größe der Obj-Datei (0.08 ist ein guter Startwert für Canaan)
+            // HUND AUFRICHTEN (-90 Grad um die X-Achse drehen)
+            wrapper.rotation.x = -Math.PI / 2;
+            
+            // Skalierung je nach Größe der Obj-Datei
             wrapper.scale.set(0.08, 0.08, 0.08); 
             wrapper.position.set(0, -1.0, 0); 
             
@@ -206,6 +209,7 @@
             filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
             filterYaw += gzRad * dt; 
 
+            // Kalibrierung anwenden
             sensor3D.rotation.set(filterPitch - pitchOffset, filterYaw - yawOffset, filterRoll - rollOffset);
             renderer.render(scene, camera);
         }
