@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v4.3</title>
+    <title>K9matics Pro 3D v4.4</title>
     <!-- Externe Bibliotheken -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -30,9 +30,9 @@
         .btn-measure { background-color: #238636; color: #fff; flex: 1.2; font-size: 0.9rem; padding: 10px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-measure.active { background-color: var(--neon-pink); box-shadow: 0 0 15px rgba(255, 0, 85, 0.5); animation: pulse 1.5s infinite; }
         .btn-measure.review { background-color: #d29922; }
-        .btn-action { background-color: rgba(48, 54, 61, 0.6); color: #8b949e; flex: 1; pointer-events: none; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-weight: bold; font-size: 0.85rem; }
-        .btn-action.ready { background-color: #1f6beb; color: #fff; pointer-events: auto; box-shadow: 0 0 10px rgba(31,107,235,0.4); }
-        .btn-action.pdf-ready { background-color: #8957e5; color: #fff; pointer-events: auto; box-shadow: 0 0 10px rgba(137,87,229,0.4); }
+        .btn-action { background-color: rgba(48, 54, 61, 0.6); color: #8b949e; flex: 1; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-weight: bold; font-size: 0.85rem; }
+        .btn-action.ready { background-color: #1f6beb; color: #fff; box-shadow: 0 0 10px rgba(31,107,235,0.4); }
+        .btn-action.pdf-ready { background-color: #8957e5; color: #fff; box-shadow: 0 0 10px rgba(137,87,229,0.4); }
         @keyframes pulse { 0% { box-shadow: 0 0 5px rgba(255, 0, 85, 0.4); } 50% { box-shadow: 0 0 20px rgba(255, 0, 85, 0.8); } 100% { box-shadow: 0 0 5px rgba(255, 0, 85, 0.4); } }
         
         .dashboard { padding: 12px 20px; flex-grow: 1; display: flex; flex-direction: column; }
@@ -42,6 +42,8 @@
         .glass-box { background: rgba(22, 27, 34, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 12px; flex: 1; text-align: center; transition: all 0.3s ease; }
         .kpi-title { font-size: 0.7rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .kpi-value { font-size: 1.4rem; font-weight: bold; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,255,204,0.3); transition: color 0.3s ease; }
+        
+        .tuning-panel { display: none; background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(8px); padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--neon-cyan); box-shadow: 0 4px 15px rgba(0,255,204,0.1); }
         
         #model3D-container { width: 100%; height: 180px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); position: relative;}
         #loader-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--neon-pink); font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; animation: pulse 1s infinite;}
@@ -60,18 +62,29 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">PRO v4.3</span></h1>
+        <h1>K9MATICS <span class="version">PRO v4.4</span></h1>
+        <button id="toggleTuningBtn" class="btn btn-action">⚙️ Profil</button>
         <button id="calibrateBtn" class="btn btn-calib">Nullpunkt</button>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
 
     <div class="controls">
         <button id="measureBtn" class="btn btn-measure">Starten</button>
-        <button id="exportBtn" class="btn btn-action">CSV</button>
-        <button id="pdfBtn" class="btn btn-action">PDF</button>
+        <button id="exportBtn" class="btn btn-action" disabled>CSV</button>
+        <button id="pdfBtn" class="btn btn-action" disabled>PDF</button>
     </div>
 
     <div class="dashboard">
+        
+        <div class="tuning-panel" id="tuningPanel">
+            <div style="font-size: 0.75rem; color: #fff; margin-bottom: 8px; font-weight: bold; text-transform: uppercase;">🐶 Individuelles Gangart-Profil</div>
+            <div style="display: flex; gap: 8px;">
+                <button id="btnLearnWalk" class="btn" style="flex:1; background:#3fb950; font-size:0.8rem; color:#fff;">Schritt (10s)</button>
+                <button id="btnLearnTrot" class="btn" style="flex:1; background:var(--neon-yellow); color:#000; font-size:0.8rem;">Trab (10s)</button>
+            </div>
+            <div id="tuningStatus" style="font-size: 0.7rem; color: #8b949e; margin-top: 8px; text-align: center;">Aktives Profil: Trab ab 1.30G | Galopp ab 2.70G</div>
+        </div>
+
         <div class="gait-badge" id="gaitStatus">Status: Nicht verbunden</div>
         
         <div class="kpi-container">
@@ -121,6 +134,67 @@
         let activeGait = "Ruhe";
         let pitchOffset = 0, rollOffset = 0, yawOffset = 0;
 
+        // --- GANGART-TUNING VARIABLEN ---
+        let valAvgWalk = 1.15;
+        let valAvgTrot = 2.00;
+        let threshWalkTrot = 1.30;
+        let threshTrotGallop = 2.70;
+        let learningBuffer = [];
+
+        function updateThresholds() {
+            threshWalkTrot = valAvgWalk + ((valAvgTrot - valAvgWalk) / 2);
+            threshTrotGallop = valAvgTrot * 1.4; // Galopp beginnt 40% über dem Durchschnitts-Trab
+            document.getElementById('tuningStatus').innerText = `Aktives Profil: Trab ab ${threshWalkTrot.toFixed(2)}G | Galopp ab ${threshTrotGallop.toFixed(2)}G`;
+        }
+
+        document.getElementById('toggleTuningBtn').addEventListener('click', () => {
+            const panel = document.getElementById('tuningPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+
+        function startCalibration(gaitType) {
+            if (appState !== "IDLE" && !appState.startsWith("LEARNING")) {
+                alert("Bitte stoppe zuerst die laufende Aufzeichnung.");
+                return;
+            }
+            appState = "LEARNING_" + gaitType;
+            learningBuffer = [];
+            
+            let timeLeft = 10;
+            const statusEl = document.getElementById('tuningStatus');
+            statusEl.innerText = `Laufe jetzt im ${gaitType}... (${timeLeft}s)`;
+            statusEl.style.color = "var(--neon-pink)";
+            
+            const interval = setInterval(() => {
+                timeLeft--;
+                if(appState === "IDLE") { clearInterval(interval); return; }
+                statusEl.innerText = `Laufe jetzt im ${gaitType}... (${timeLeft}s)`;
+            }, 1000);
+
+            setTimeout(() => {
+                if(appState !== "LEARNING_" + gaitType) return;
+                clearInterval(interval);
+                appState = "IDLE";
+                statusEl.style.color = "#8b949e";
+                
+                const peaks = findPeaks(learningBuffer, 1.1, 5);
+                if(peaks.length < 4) {
+                    statusEl.innerText = "Zu wenige Schritte erkannt. Bitte wiederholen!";
+                    statusEl.style.color = "red";
+                    return;
+                }
+                
+                const meanPeak = peaks.reduce((a, b) => a + b.value, 0) / peaks.length;
+                if(gaitType === "Schritt") valAvgWalk = meanPeak;
+                if(gaitType === "Trab") valAvgTrot = meanPeak;
+                
+                updateThresholds();
+            }, 10000);
+        }
+
+        document.getElementById('btnLearnWalk').addEventListener('click', () => startCalibration('Schritt'));
+        document.getElementById('btnLearnTrot').addEventListener('click', () => startCalibration('Trab'));
+
         // --- 3D SETUP ---
         const container3D = document.getElementById('model3D-container');
         const scene = new THREE.Scene();
@@ -144,47 +218,31 @@
         const sensor3D = new THREE.Group(); 
         scene.add(sensor3D);
 
-        // --- ECHTES MODELL LADEN MIT ZENTRIERUNG & ROTATION ---
         const loader = new THREE.OBJLoader();
         loader.load('13466_Canaan_Dog_v1_L3.obj', function (object) {
-            
             document.getElementById('loader-text').style.display = 'none';
-
             object.traverse(function (child) {
                 if (child.isMesh) {
                     child.material = new THREE.MeshPhysicalMaterial({ 
-                        color: 0x00ffcc, 
-                        transparent: true, 
-                        opacity: 0.5,
-                        wireframe: true 
+                        color: 0x00ffcc, transparent: true, opacity: 0.5, wireframe: true 
                     });
                 }
             });
 
-            // ZENTRIERUNGS-ALGORITHMUS
             const box = new THREE.Box3().setFromObject(object);
             const center = box.getCenter(new THREE.Vector3());
-            
-            object.position.x = -center.x;
-            object.position.y = -center.y;
-            object.position.z = -center.z;
+            object.position.x = -center.x; object.position.y = -center.y; object.position.z = -center.z;
 
             const wrapper = new THREE.Group();
             wrapper.add(object);
-            
-            // HUND AUFRICHTEN (-90 Grad um die X-Achse drehen)
             wrapper.rotation.x = -Math.PI / 2;
-            
-            // Skalierung je nach Größe der Obj-Datei
             wrapper.scale.set(0.08, 0.08, 0.08); 
             wrapper.position.set(0, -1.0, 0); 
             
             sensor3D.add(wrapper);
-            
         }, undefined, function (error) {
             document.getElementById('loader-text').innerText = "ERROR 404: DATEI FEHLT";
             document.getElementById('loader-text').style.color = "red";
-            console.error("Modell nicht gefunden:", error);
         });
 
         camera.position.set(3.5, 2.5, 4.5);
@@ -198,10 +256,7 @@
             const dt = (now - lastFilterTime) / 1000.0;
             lastFilterTime = now;
 
-            const gxRad = gX * (Math.PI / 180);
-            const gyRad = gY * (Math.PI / 180);
-            const gzRad = gZ * (Math.PI / 180);
-
+            const gxRad = gX * (Math.PI / 180); const gyRad = gY * (Math.PI / 180); const gzRad = gZ * (Math.PI / 180);
             const accRoll = Math.atan2(aY, Math.sqrt(aX*aX + aZ*aZ));
             const accPitch = Math.atan2(-aX, Math.sqrt(aY*aY + aZ*aZ));
 
@@ -209,7 +264,6 @@
             filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
             filterYaw += gzRad * dt; 
 
-            // Kalibrierung anwenden
             sensor3D.rotation.set(filterPitch - pitchOffset, filterYaw - yawOffset, filterRoll - rollOffset);
             renderer.render(scene, camera);
         }
@@ -220,27 +274,20 @@
             renderer.setSize(container3D.clientWidth, container3D.clientHeight);
             renderer.render(scene, camera);
         });
-        renderer.render(scene, camera);
 
-        // --- CALIBRATION ---
         document.getElementById('calibrateBtn').addEventListener('click', () => {
-            pitchOffset = filterPitch;
-            rollOffset = filterRoll;
-            yawOffset = filterYaw;
+            pitchOffset = filterPitch; rollOffset = filterRoll; yawOffset = filterYaw;
             document.getElementById('calibrateBtn').innerText = "OK ✓";
             setTimeout(() => document.getElementById('calibrateBtn').innerText = "Nullpunkt", 2000);
         });
 
         // --- CHART SETUP ---
         const ctx = document.getElementById('mainChart').getContext('2d');
-        
         let gradientIdle = ctx.createLinearGradient(0, 0, 0, 150);
-        gradientIdle.addColorStop(0, 'rgba(0, 255, 204, 0.4)');
-        gradientIdle.addColorStop(1, 'rgba(0, 255, 204, 0.0)');
+        gradientIdle.addColorStop(0, 'rgba(0, 255, 204, 0.4)'); gradientIdle.addColorStop(1, 'rgba(0, 255, 204, 0.0)');
 
         let gradientMeas = ctx.createLinearGradient(0, 0, 0, 150);
-        gradientMeas.addColorStop(0, 'rgba(255, 0, 85, 0.4)');
-        gradientMeas.addColorStop(1, 'rgba(255, 0, 85, 0.0)');
+        gradientMeas.addColorStop(0, 'rgba(255, 0, 85, 0.4)'); gradientMeas.addColorStop(1, 'rgba(255, 0, 85, 0.0)');
 
         const mainChart = new Chart(ctx, {
             type: 'line',
@@ -253,14 +300,7 @@
                     { label: 'Z', data: zData, borderColor: 'rgba(88,166,255,0.4)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false }
                 ] 
             },
-            options: { 
-                responsive: true, maintainAspectRatio: false, animation: false, 
-                scales: { 
-                    x: { display: false }, 
-                    y: { suggestedMin: -1.5, suggestedMax: 2.5, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b949e' } } 
-                }, 
-                plugins: { legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 12 } } } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { suggestedMin: -1.5, suggestedMax: 2.5, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b949e' } } }, plugins: { legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 12 } } } }
         });
 
         function findPeaks(data, height, distance) {
@@ -277,19 +317,15 @@
             if (recentAvgMag < 1.12 && peaks.length === 0) return "Ruhe";
             if (peaks.length === 0) return "Bewegung";
             const meanPeakVal = peaks.reduce((a, b) => a + b.value, 0) / peaks.length;
-            if (meanPeakVal > 2.7) return "Galopp";
-            if (meanPeakVal >= 1.3 && meanPeakVal <= 2.7) return "Trab";
+            if (meanPeakVal > threshTrotGallop) return "Galopp";
+            if (meanPeakVal >= threshWalkTrot && meanPeakVal <= threshTrotGallop) return "Trab";
             return "Schritt";
         }
 
         async function connectBluetooth() {
             try {
-                const btn = document.getElementById('connectBtn');
-                btn.innerText = "Suche...";
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: "K9matics" }, { services: [SERVICE_UUID] }],
-                    optionalServices: [SERVICE_UUID]
-                });
+                const btn = document.getElementById('connectBtn'); btn.innerText = "Suche...";
+                bleDevice = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "K9matics" }, { services: [SERVICE_UUID] }], optionalServices: [SERVICE_UUID] });
                 const server = await bleDevice.gatt.connect();
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 const characteristic = await service.getCharacteristic(CHAR_UUID);
@@ -297,57 +333,40 @@
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', handleData);
                 
-                btn.innerText = "Verbunden";
-                btn.style.backgroundColor = "#ff0055"; btn.style.color = "#fff"; btn.style.boxShadow = "0 0 15px rgba(255,0,85,0.4)";
+                btn.innerText = "Verbunden"; btn.style.backgroundColor = "#ff0055"; btn.style.color = "#fff"; btn.style.boxShadow = "0 0 15px rgba(255,0,85,0.4)";
                 document.getElementById('gaitStatus').innerText = "Status: Bereit";
                 setInterval(updateDashboard, 100);
-            } catch (error) {
-                console.error(error);
-                document.getElementById('connectBtn').innerText = "Connect";
-            }
+            } catch (error) { document.getElementById('connectBtn').innerText = "Connect"; }
         }
 
         function handleData(event) {
             if (appState === "REVIEW") return;
             buffer += new TextDecoder().decode(event.target.value);
-            let lines = buffer.split('\n');
-            buffer = lines.pop(); 
-            const now = Date.now();
+            let lines = buffer.split('\n'); buffer = lines.pop(); const now = Date.now();
             
             for (let line of lines) {
-                line = line.trim();
-                if(!line) continue;
-                
+                line = line.trim(); if(!line) continue;
                 document.getElementById('debugRaw').innerText = "Raw: " + line;
 
-                let ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0;
-                let dataFound = false;
-
+                let ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0; let dataFound = false;
                 let mX = line.match(/(?:A?X):\s*([-\d\.]+)/i); if(mX) { ax = parseFloat(mX[1]); dataFound = true; }
                 let mY = line.match(/(?:A?Y):\s*([-\d\.]+)/i); if(mY) { ay = parseFloat(mY[1]); dataFound = true; }
                 let mZ = line.match(/(?:A?Z):\s*([-\d\.]+)/i); if(mZ) { az = parseFloat(mZ[1]); dataFound = true; }
-                
                 let mGX = line.match(/GX:\s*([-\d\.]+)/i); if(mGX) { gx = parseFloat(mGX[1]); }
                 let mGY = line.match(/GY:\s*([-\d\.]+)/i); if(mGY) { gy = parseFloat(mGY[1]); }
                 let mGZ = line.match(/GZ:\s*([-\d\.]+)/i); if(mGZ) { gz = parseFloat(mGZ[1]); }
 
                 if (dataFound) {
-                    if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ;
-                    lastZ = az;
-
+                    if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ; lastZ = az;
                     update3DModel(ax, ay, az, gx, gy, gz);
                     const mag = Math.sqrt(ax*ax + ay*ay + az*az);
                     
-                    magData.push(mag); magData.shift();
-                    xData.push(ax); xData.shift();
-                    yData.push(ay); yData.shift();
-                    zData.push(az); zData.shift();
+                    magData.push(mag); magData.shift(); xData.push(ax); xData.shift(); yData.push(ay); yData.shift(); zData.push(az); zData.shift();
 
+                    if (appState.startsWith("LEARNING_")) { learningBuffer.push(mag); }
                     if (appState === "MEASURING") {
                         const timestamp = ((now - recordStartTime) / 1000).toFixed(3);
-                        recordedMags.push(mag);
-                        recordedX.push(ax); recordedY.push(ay); recordedZ.push(az);
-                        recordedGaits.push(activeGait);
+                        recordedMags.push(mag); recordedX.push(ax); recordedY.push(ay); recordedZ.push(az); recordedGaits.push(activeGait);
                         recordedSessionCSV.push(`${timestamp},${ax},${ay},${az},${gx},${gy},${gz},${mag.toFixed(3)},${activeGait}`);
                     }
                 }
@@ -355,14 +374,13 @@
         }
 
         function updateDashboard() {
-            if (appState === "REVIEW") return;
+            if (appState === "REVIEW" || appState.startsWith("LEARNING")) return;
             
             mainChart.data.datasets[0].borderColor = appState === "MEASURING" ? '#ff0055' : '#00ffcc';
             mainChart.data.datasets[0].backgroundColor = appState === "MEASURING" ? gradientMeas : gradientIdle;
             mainChart.update();
 
-            const recentData = magData.slice(-35); 
-            const livePeaks = findPeaks(recentData, 1.25, 5); 
+            const recentData = magData.slice(-35); const livePeaks = findPeaks(recentData, 1.25, 5); 
             const recentAvg = magData.slice(-10).reduce((a, b) => a + b, 0) / 10; 
             
             activeGait = detectGait(livePeaks, recentAvg);
@@ -386,11 +404,9 @@
                             asymEl.innerText = asymCalc + " %";
                             
                             if (parseFloat(asymCalc) > 15) {
-                                asymEl.style.color = "var(--neon-pink)";
-                                asymEl.style.textShadow = "0 0 10px rgba(255,0,85,0.4)";
+                                asymEl.style.color = "var(--neon-pink)"; asymEl.style.textShadow = "0 0 10px rgba(255,0,85,0.4)";
                             } else {
-                                asymEl.style.color = "var(--neon-cyan)";
-                                asymEl.style.textShadow = "0 0 10px rgba(0,255,204,0.3)";
+                                asymEl.style.color = "var(--neon-cyan)"; asymEl.style.textShadow = "0 0 10px rgba(0,255,204,0.3)";
                             }
                         }
                     }
@@ -400,38 +416,25 @@
 
         function showReview() {
             mainChart.data.labels = Array.from({length: recordedMags.length}, (_, i) => i);
-            mainChart.data.datasets[0].data = recordedMags;
-            mainChart.data.datasets[1].data = recordedX;
-            mainChart.data.datasets[2].data = recordedY;
-            mainChart.data.datasets[3].data = recordedZ;
+            mainChart.data.datasets[0].data = recordedMags; mainChart.data.datasets[1].data = recordedX; mainChart.data.datasets[2].data = recordedY; mainChart.data.datasets[3].data = recordedZ;
             mainChart.data.datasets[0].borderColor = '#ffcc00';
-            
             let gradientRev = ctx.createLinearGradient(0, 0, 0, 150);
-            gradientRev.addColorStop(0, 'rgba(255, 204, 0, 0.4)');
-            gradientRev.addColorStop(1, 'rgba(255, 204, 0, 0.0)');
+            gradientRev.addColorStop(0, 'rgba(255, 204, 0, 0.4)'); gradientRev.addColorStop(1, 'rgba(255, 204, 0, 0.0)');
             mainChart.data.datasets[0].backgroundColor = gradientRev;
-            
-            mainChart.options.scales.x.display = true;
-            mainChart.update();
+            mainChart.options.scales.x.display = true; mainChart.update();
             
             let counts = { "Ruhe": 0, "Schritt": 0, "Trab": 0, "Galopp": 0, "Bewegung": 0 };
             recordedGaits.forEach(g => { if(counts[g] !== undefined) counts[g]++; });
-            const total = recordedGaits.length || 1;
-            const distDiv = document.getElementById('gaitDist');
-            distDiv.innerHTML = '';
+            const total = recordedGaits.length || 1; const distDiv = document.getElementById('gaitDist'); distDiv.innerHTML = '';
             const colors = { "Schritt": "gait-schritt", "Trab": "gait-trab", "Galopp": "gait-galopp", "Ruhe": "gait-ruhe", "Bewegung": "gait-ruhe" };
             for (const [gait, count] of Object.entries(counts)) {
                 if (count > 0) {
-                    const pct = (count / total) * 100;
-                    const segment = document.createElement('div');
-                    segment.className = `gait-segment ${colors[gait]}`;
-                    segment.style.width = `${pct}%`;
-                    segment.title = `${gait} (${pct.toFixed(0)}%)`;
+                    const pct = (count / total) * 100; const segment = document.createElement('div');
+                    segment.className = `gait-segment ${colors[gait]}`; segment.style.width = `${pct}%`; segment.title = `${gait} (${pct.toFixed(0)}%)`;
                     distDiv.appendChild(segment);
                 }
             }
-            distDiv.classList.add('show');
-            document.getElementById('gaitStatus').innerText = "Zusammenfassung der Messung";
+            distDiv.classList.add('show'); document.getElementById('gaitStatus').innerText = "Zusammenfassung der Messung";
         }
 
         document.getElementById('measureBtn').addEventListener('click', () => {
@@ -443,15 +446,15 @@
                 recordedMags = []; recordedX = []; recordedY = []; recordedZ = []; recordedGaits = []; 
                 distDiv.classList.remove('show');
                 btn.innerText = "Stoppen"; btn.classList.add("active"); btn.classList.remove("review");
-                exp.classList.remove("ready"); pdf.classList.remove("pdf-ready");
+                exp.disabled = true; pdf.disabled = true; exp.classList.remove("ready"); pdf.classList.remove("pdf-ready");
                 document.getElementById('valAsym').innerText = "..."; document.getElementById('valImpact').innerText = "..."; document.getElementById('valSteps').innerText = "0";
                 document.getElementById('valAsym').style.color = "var(--neon-cyan)";
             } else if (appState === "MEASURING") {
                 appState = "REVIEW"; btn.innerText = "Neue Messung"; btn.classList.remove("active"); btn.classList.add("review");
-                if (recordedSessionCSV.length > 1) { exp.classList.add("ready"); pdf.classList.add("pdf-ready"); showReview(); }
+                if (recordedSessionCSV.length > 1) { exp.disabled = false; pdf.disabled = false; exp.classList.add("ready"); pdf.classList.add("pdf-ready"); showReview(); }
             } else if (appState === "REVIEW") {
                 appState = "IDLE"; btn.innerText = "Starten"; btn.classList.remove("review");
-                exp.classList.remove("ready"); pdf.classList.remove("pdf-ready"); distDiv.classList.remove('show');
+                exp.disabled = true; pdf.disabled = true; exp.classList.remove("ready"); pdf.classList.remove("pdf-ready"); distDiv.classList.remove('show');
                 mainChart.data.labels = timeData; mainChart.data.datasets[0].data = magData; 
                 mainChart.data.datasets[1].data = xData; mainChart.data.datasets[2].data = yData; mainChart.data.datasets[3].data = zData;
                 mainChart.options.scales.x.display = false; mainChart.update();
