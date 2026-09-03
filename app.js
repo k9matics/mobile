@@ -161,4 +161,4 @@ setInterval(() => {
 }, 500);
 
 updateCounts();
-setStatus("READY");
+setStatus("READY")
