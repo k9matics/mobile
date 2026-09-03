@@ -1,65 +1,71 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>K9matics Pro Tactical v5.9</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Gait HUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="pullRefreshIndicator">↓ Zum Aktualisieren nach unten ziehen</div>
+  <div id="pullRefreshIndicator">Zum Aktualisieren ziehen</div>
 
   <header>
-    <h1>K9MATICS <span class="version">v5.9</span></h1>
-    <button id="camBtn" class="btn btn-cam">KAM</button>
-    <button id="calibrateBtn" class="btn btn-calib">NULL</button>
-    <button id="connectBtn" class="btn" style="border-color: var(--neon-cyan); color: var(--neon-cyan);">CONNECT</button>
+    <h1>GAIT HUD <span class="version">v1</span></h1>
+    <button class="btn btn-calib" id="btnCalib">CALIB</button>
+    <button class="btn btn-cam" id="btnCam">CAM</button>
   </header>
 
   <div class="controls">
-    <button id="measureBtn" class="btn btn-measure">STARTEN</button>
-    <button id="exportBtn" class="btn btn-action" disabled>CSV</button>
-    <button id="pdfBtn" class="btn btn-action" disabled>PDF</button>
+    <button class="btn btn-measure" id="btnMeasure">MESSEN</button>
+    <button class="btn-action" id="btnSave">SAVE</button>
+    <button class="btn-action" id="btnPdf">PDF</button>
   </div>
 
-  <div class="dashboard">
-    <div class="gait-badge" id="gaitStatus">STATUS: GETRENNT (6-AXIS + CAM)</div>
+  <main class="dashboard">
+    <div class="gait-badge" id="gaitBadge">STATUS</div>
 
     <div class="kpi-container">
       <div class="glass-box">
-        <div class="kpi-title">ASYMMETRIE</div>
-        <div class="kpi-value" id="valAsym">-- %</div>
+        <div class="kpi-title">SCHRITT</div>
+        <div class="kpi-value" id="kpiStep">0</div>
       </div>
       <div class="glass-box">
-        <div class="kpi-title">STOSSKRAFT</div>
-        <div class="kpi-value" id="valImpact" style="color: var(--tactical-red); text-shadow: 0 0 8px rgba(179,0,45,0.5);">-- G</div>
+        <div class="kpi-title">TRAB</div>
+        <div class="kpi-value" id="kpiTrab">0</div>
       </div>
       <div class="glass-box">
-        <div class="kpi-title">SCHRITTE</div>
-        <div class="kpi-value" id="valSteps" style="color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255,204,0,0.4);">0</div>
+        <div class="kpi-title">GALOPP</div>
+        <div class="kpi-value" id="kpiGalopp">0</div>
       </div>
     </div>
 
-    <div id="hud-radar-container">
+    <section id="hud-radar-container">
       <video id="camFeed" autoplay playsinline muted></video>
-      <div class="hud-label">TACTICAL CAM // HUD</div>
+      <div class="radar-ring"></div>
       <div class="crosshair-h"></div>
       <div class="crosshair-v"></div>
-      <div class="radar-ring"></div>
       <div id="radar-dot"></div>
-      <div class="hud-coords" id="hudCoords">AX: 0.00 | AY: 0.00</div>
-    </div>
+      <div class="hud-label">HUD ACTIVE</div>
+      <div class="hud-coords" id="hudCoords">X:0 Y:0</div>
+    </section>
 
-    <div id="debugRaw">Warte auf Sensordaten...</div>
+    <p id="debugRaw">READY</p>
 
-    <div class="chart-container">
-      <canvas id="mainChart"></canvas>
-      <div id="gaitDist" class="gait-distribution"></div>
-    </div>
-  </div>
+    <section class="chart-container">
+      <canvas id="gaitChart"></canvas>
+      <div class="gait-distribution" id="gaitDistribution">
+        <div class="gait-segment gait-schritt" id="segSchritt"></div>
+        <div class="gait-segment gait-trab" id="segTrab"></div>
+        <div class="gait-segment gait-galopp" id="segGalopp"></div>
+        <div class="gait-segment gait-ruhe" id="segRuhe"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
