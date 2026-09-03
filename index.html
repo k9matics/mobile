@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-    <title>K9matics Pro Tactical v5.4</title>
+    <title>K9matics Pro Tactical v5.5</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- Externe Bibliotheken -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- OBJ Loader -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     
     <style>
         :root { 
@@ -28,7 +25,7 @@
         * { box-sizing: border-box; touch-action: manipulation; }
         html, body { 
             margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; 
-            background: var(--bg); color: var(--text); font-family: 'Share TechMono', monospace; 
+            background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; 
             background-image: radial-gradient(circle at top, #1a221b, var(--bg));
         }
         body { display: flex; flex-direction: column; justify-content: space-between; padding: 4px; }
@@ -52,7 +49,6 @@
             box-shadow: inset 0 0 5px rgba(0,255,204,0.1); transition: all 0.2s ease;
         }
         .btn:active { transform: scale(0.95); background-color: var(--tactical-oliv-hover); }
-        .btn-calib { background-color: #161b22; border-color: #30363d; color: #8b949e; }
         
         .controls { display: flex; gap: 4px; width: 100%; flex-shrink: 0; }
         .btn-measure { 
@@ -96,19 +92,24 @@
         }
         .btn-tune { flex: 1; font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; padding: 4px; color: #fff; border: none; border-radius: 3px; cursor: pointer; }
         
-        #model3D-container { 
+        /* NEU: Taktisches HUD-Radar statt 3D-Modell */
+        #hud-radar-container { 
             width: 100%; flex-grow: 1.5; background: #07090e; border: 1px solid #30363d; border-radius: 4px; 
             overflow: hidden; position: relative; box-shadow: inset 0 0 15px rgba(0,0,0,0.9); min-height: 120px;
+            display: flex; align-items: center; justify-content: center;
         }
-        #model3D-container::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            border: 1px solid rgba(0,255,204,0.1); pointer-events: none;
+        .radar-grid {
+            position: absolute; width: 100px; height: 100px; border: 1px solid rgba(0,255,204,0.2); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
         }
+        .radar-grid::before { content: ''; position: absolute; width: 100%; height: 1px; background: rgba(0,255,204,0.2); }
+        .radar-grid::after { content: ''; position: absolute; width: 1px; height: 100%; background: rgba(0,255,204,0.2); }
+        #radar-dot {
+            width: 10px; height: 10px; background: var(--neon-cyan); border-radius: 50%; position: absolute;
+            box-shadow: 0 0 10px var(--neon-cyan); transition: transform 0.05s linear;
+        }
+        .hud-label { position: absolute; top: 4px; left: 6px; font-size: 0.5rem; color: var(--neon-cyan); opacity: 0.6; }
         
-        #loader-text { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            color: var(--tactical-red); font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; letter-spacing: 2px; animation: pulse 1s infinite; 
-        }
         #debugRaw { font-size: 0.5rem; color: rgba(139, 148, 158, 0.4); text-align: center; margin: 0; font-family: monospace; flex-shrink: 0; }
         
         .chart-container { 
@@ -125,7 +126,6 @@
         .gait-galopp { background-color: var(--tactical-red); }
         .gait-ruhe { background-color: #21262d; }
 
-        /* Pull-to-refresh Indikator Overlay */
         #pullRefreshIndicator {
             position: fixed; top: -50px; left: 0; width: 100%; height: 50px;
             background: var(--card-bg); color: var(--neon-cyan); display: flex;
@@ -139,10 +139,8 @@
     <div id="pullRefreshIndicator">↓ Zum Aktualisieren nach unten ziehen</div>
 
     <header>
-        <h1>K9MATICS <span class="version">v5.4</span></h1>
-        <button id="toggleFullscreenBtn" class="btn" title="Vollbild">⛶</button>
+        <h1>K9MATICS <span class="version">v5.5</span></h1>
         <button id="toggleTuningBtn" class="btn">PROFIL</button>
-        <button id="calibrateBtn" class="btn btn-calib">NULL</button>
         <button id="connectBtn" class="btn" style="border-color: var(--neon-cyan); color: var(--neon-cyan);">CONNECT</button>
     </header>
 
@@ -158,7 +156,7 @@
             <div style="font-size: 0.7rem; color: var(--neon-yellow); margin-bottom: 3px;">DYNAMISCHES PROFIL (START / STOP)</div>
             <div style="display: flex; gap: 4px;">
                 <button id="btnLearnWalk" class="btn-tune" style="background:#3fb950;">SCHRITT</button>
-                <button id="btnLearnTrot" class="btn-tune" style="background:var(--tactical-oliv); border:1px solid rgba(0,255,204,0.3);">TRAB</button>
+                <button id="btnLearnTrot" class="btn-tune" style="background:var(--tactical-oliv);">TRAB</button>
                 <button id="btnLearnGallop" class="btn-tune" style="background:var(--tactical-red);">GALOPP</button>
             </div>
             <div id="tuningStatus" style="font-size: 0.5rem; color: #8b949e; margin-top: 3px; text-align: center;">Profil: Trab > 1.30G | Galopp > 2.70G</div>
@@ -181,8 +179,12 @@
             </div>
         </div>
 
-        <div id="model3D-container">
-            <div id="loader-text">LADE 3D MODELL...</div>
+        <!-- NEU: Taktisches G-Force HUD -->
+        <div id="hud-radar-container">
+            <div class="hud-label">G-FORCE VECTORS (X/Y)</div>
+            <div class="radar-grid">
+                <div id="radar-dot"></div>
+            </div>
         </div>
         <div id="debugRaw">Warte auf Sensordaten...</div>
 
@@ -193,28 +195,22 @@
     </div>
 
     <script>
-        // --- PULL-TO-REFRESH LOGIK ---
         let touchStartY = 0;
         const indicator = document.getElementById('pullRefreshIndicator');
 
         window.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0) {
-                touchStartY = e.touches[0].clientY;
-            }
+            if (window.scrollY === 0) touchStartY = e.touches[0].clientY;
         }, { passive: true });
 
         window.addEventListener('touchmove', (e) => {
-            const touchY = e.touches[0].clientY;
-            const pullDist = touchY - touchStartY;
-            if (window.scrollY === 0 && pullDist > 80) {
+            if (window.scrollY === 0 && (e.touches[0].clientY - touchStartY) > 80) {
                 indicator.style.transform = "translateY(50px)";
                 indicator.innerText = "⟳ Loslassen zum Aktualisieren...";
             }
         }, { passive: true });
 
         window.addEventListener('touchend', (e) => {
-            const touchEndY = e.changedTouches[0].clientY;
-            if (window.scrollY === 0 && (touchEndY - touchStartY) > 80) {
+            if (window.scrollY === 0 && (e.changedTouches[0].clientY - touchStartY) > 80) {
                 window.location.reload();
             } else {
                 indicator.style.transform = "translateY(0)";
@@ -234,23 +230,18 @@
         let timeData = Array.from({length: LIVE_BUFFER_SIZE}, (_, i) => i);
         let buffer = "";
 
-        let lastX = 0, lastY = 0, lastZ = -1.0;
         let appState = "IDLE"; 
         let recordedMags = [], recordedX = [], recordedY = [], recordedZ = [], recordedGaits = [], recordedSessionCSV = [];
         let recordStartTime = 0;
         let activeGait = "Ruhe";
-        let pitchOffset = 0, rollOffset = 0, yawOffset = 0;
 
         let valAvgWalk = 1.15, valAvgTrot = 2.00, valAvgGallop = 3.50;
         let threshWalkTrot = 1.30, threshTrotGallop = 2.70;
         let learningBuffer = [], activeLearningGait = "";
 
-        document.getElementById('toggleFullscreenBtn').addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => console.error(err));
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-            }
+        document.getElementById('toggleTuningBtn').addEventListener('click', () => {
+            const panel = document.getElementById('tuningPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
         });
 
         function updateThresholds() {
@@ -258,11 +249,6 @@
             threshTrotGallop = valAvgTrot + ((valAvgGallop - valAvgTrot) / 2);
             document.getElementById('tuningStatus').innerText = `Profil: Trab > ${threshWalkTrot.toFixed(2)}G | Galopp > ${threshTrotGallop.toFixed(2)}G`;
         }
-
-        document.getElementById('toggleTuningBtn').addEventListener('click', () => {
-            const panel = document.getElementById('tuningPanel');
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        });
 
         function handleCalibrationToggle(gaitType, btnId, defaultColor) {
             const btn = document.getElementById(btnId);
@@ -302,94 +288,6 @@
         document.getElementById('btnLearnWalk').addEventListener('click', () => handleCalibrationToggle('Schritt', 'btnLearnWalk', '#3fb950'));
         document.getElementById('btnLearnTrot').addEventListener('click', () => handleCalibrationToggle('Trab', 'btnLearnTrot', '#2e3f1b'));
         document.getElementById('btnLearnGallop').addEventListener('click', () => handleCalibrationToggle('Galopp', 'btnLearnGallop', '#b3002d'));
-
-        // --- 3D SETUP ---
-        const container3D = document.getElementById('model3D-container');
-        const scene = new THREE.Scene();
-        
-        const gridHelper = new THREE.GridHelper(10, 20, 0x00ffcc, 0x161b22);
-        gridHelper.position.y = -1.2;
-        scene.add(gridHelper);
-
-        const camera = new THREE.PerspectiveCamera(45, container3D.clientWidth / container3D.clientHeight, 0.1, 100);
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(container3D.clientWidth, container3D.clientHeight);
-        container3D.appendChild(renderer.domElement);
-
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.9);
-        hemiLight.position.set(0, 20, 0);
-        scene.add(hemiLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(5, 10, 7);
-        scene.add(dirLight);
-
-        const sensor3D = new THREE.Group(); 
-        scene.add(sensor3D);
-
-        const loader = new THREE.OBJLoader();
-        loader.load('13466_Canaan_Dog_v1_L3.obj', function (object) {
-            document.getElementById('loader-text').style.display = 'none';
-            
-            object.traverse(function (child) {
-                if (child.isMesh) {
-                    child.material = new THREE.MeshStandardMaterial({ 
-                        color: 0x00ffcc, roughness: 0.3, metalness: 0.2
-                    });
-                }
-            });
-
-            const box = new THREE.Box3().setFromObject(object);
-            const center = box.getCenter(new THREE.Vector3());
-            object.position.x = -center.x; object.position.y = -center.y; object.position.z = -center.z;
-
-            const wrapper = new THREE.Group();
-            wrapper.add(object);
-            wrapper.rotation.x = -Math.PI / 2;
-            wrapper.scale.set(0.08, 0.08, 0.08); 
-            wrapper.position.set(0, -1.0, 0); 
-            
-            sensor3D.add(wrapper);
-        }, undefined, function (error) {
-            document.getElementById('loader-text').innerText = "FEHLER: 404 OBJ FEHLT";
-            document.getElementById('loader-text').style.color = "var(--tactical-red)";
-        });
-
-        camera.position.set(3.5, 2.5, 4.5);
-        camera.lookAt(0, -0.2, 0);
-
-        let filterPitch = 0, filterRoll = 0, filterYaw = 0;
-        let lastFilterTime = Date.now();
-
-        function update3DModel(aX, aY, aZ, gX, gY, gZ) {
-            const now = Date.now();
-            const dt = (now - lastFilterTime) / 1000.0;
-            lastFilterTime = now;
-
-            const gxRad = gX * (Math.PI / 180); const gyRad = gY * (Math.PI / 180); const gzRad = gZ * (Math.PI / 180);
-            const accRoll = Math.atan2(aY, Math.sqrt(aX*aX + aZ*aZ));
-            const accPitch = Math.atan2(-aX, Math.sqrt(aY*aY + aZ*aZ));
-
-            filterRoll = 0.96 * (filterRoll + gxRad * dt) + 0.04 * accRoll;
-            filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
-            filterYaw += gzRad * dt; 
-
-            sensor3D.rotation.set(filterPitch - pitchOffset, filterYaw - yawOffset, filterRoll - rollOffset);
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            if (!container3D) return;
-            camera.aspect = container3D.clientWidth / container3D.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container3D.clientWidth, container3D.clientHeight);
-            renderer.render(scene, camera);
-        });
-
-        document.getElementById('calibrateBtn').addEventListener('click', () => {
-            pitchOffset = filterPitch; rollOffset = filterRoll; yawOffset = filterYaw;
-            document.getElementById('calibrateBtn').innerText = "OK";
-            setTimeout(() => document.getElementById('calibrateBtn').innerText = "NULL", 2000);
-        });
 
         // --- CHART SETUP ---
         const ctx = document.getElementById('mainChart').getContext('2d');
@@ -433,7 +331,7 @@
         function detectGait(peaks, recentAvgMag) {
             if (recentAvgMag < 1.12 && peaks.length === 0) return "Ruhe";
             if (peaks.length === 0) return "Bewegung";
-            const meanPeakVal = peaks.reduce((a, b) => a + b.value, 0) / peaks.length;
+            const meanPeakVal = peaks.reduce((a, b) => a + b, 0) / peaks.length;
             if (meanPeakVal > threshTrotGallop) return "Galopp";
             if (meanPeakVal >= threshWalkTrot && meanPeakVal <= threshTrotGallop) return "Trab";
             return "Schritt";
@@ -450,7 +348,7 @@
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', handleData);
                 
-                btn.innerText = "VERBUNDEN"; btn.style.backgroundColor = "var(--tactical-red)"; btn.style.color = "#fff"; btn.style.boxShadow = "0 0 10px var(--tactical-red)";
+                btn.innerText = "VERBUNDEN"; btn.style.backgroundColor = "var(--tactical-red)"; btn.style.color = "#fff";
                 document.getElementById('gaitStatus').innerText = "STATUS: BEREIT";
                 setInterval(updateDashboard, 100);
             } catch (error) { document.getElementById('connectBtn').innerText = "CONNECT"; }
@@ -469,22 +367,21 @@
                 let mX = line.match(/(?:A?X):\s*([-\d\.]+)/i); if(mX) { ax = parseFloat(mX[1]); dataFound = true; }
                 let mY = line.match(/(?:A?Y):\s*([-\d\.]+)/i); if(mY) { ay = parseFloat(mY[1]); dataFound = true; }
                 let mZ = line.match(/(?:A?Z):\s*([-\d\.]+)/i); if(mZ) { az = parseFloat(mZ[1]); dataFound = true; }
-                let mGX = line.match(/GX:\s*([-\d\.]+)/i); if(mGX) { gx = parseFloat(mGX[1]); }
-                let mGY = line.match(/GY:\s*([-\d\.]+)/i); if(mGY) { gy = parseFloat(mGY[1]); }
-                let mGZ = line.match(/GZ:\s*([-\d\.]+)/i); if(mGZ) { gz = parseFloat(mGZ[1]); }
 
                 if (dataFound) {
-                    if (az === 0 && Math.abs(lastZ) > 0.2) az = lastZ; lastZ = az;
-                    update3DModel(ax, ay, az, gx, gy, gz);
+                    // Update Radar Punkt basierend auf X und Y Beschleunigung
+                    const dot = document.getElementById('radar-dot');
+                    const maxOffset = 40; // Pixel max Ausschlag
+                    dot.style.transform = `translate(${Math.max(-maxOffset, Math.min(maxOffset, ax * 30))}px, ${Math.max(-maxOffset, Math.min(maxOffset, ay * 30))}px)`;
+
                     const mag = Math.sqrt(ax*ax + ay*ay + az*az);
-                    
                     magData.push(mag); magData.shift(); xData.push(ax); xData.shift(); yData.push(ay); yData.shift(); zData.push(az); zData.shift();
 
                     if (appState === "LEARNING") { learningBuffer.push(mag); }
                     if (appState === "MEASURING") {
                         const timestamp = ((now - recordStartTime) / 1000).toFixed(3);
                         recordedMags.push(mag); recordedX.push(ax); recordedY.push(ay); recordedZ.push(az); recordedGaits.push(activeGait);
-                        recordedSessionCSV.push(`${timestamp},${ax},${ay},${az},${gx},${gy},${gz},${mag.toFixed(3)},${activeGait}`);
+                        recordedSessionCSV.push(`${timestamp},${ax},${ay},${az},${mag.toFixed(3)},${activeGait}`);
                     }
                 }
             }
@@ -516,15 +413,7 @@
                         if (lefts.length > 0 && rights.length > 0) {
                             const meanL = lefts.reduce((a, b) => a + b, 0) / lefts.length, meanR = rights.reduce((a, b) => a + b, 0) / rights.length;
                             const asymCalc = (Math.abs(meanL - meanR) / ((meanL + meanR) / 2) * 100).toFixed(1);
-                            
-                            const asymEl = document.getElementById('valAsym');
-                            asymEl.innerText = asymCalc + " %";
-                            
-                            if (parseFloat(asymCalc) > 15) {
-                                asymEl.style.color = "var(--tactical-red)"; asymEl.style.textShadow = "0 0 8px rgba(179,0,45,0.6)";
-                            } else {
-                                asymEl.style.color = "var(--neon-cyan)"; asymEl.style.textShadow = "0 0 8px rgba(0,255,204,0.3)";
-                            }
+                            document.getElementById('valAsym').innerText = asymCalc + " %";
                         }
                     }
                 }
@@ -535,9 +424,6 @@
             mainChart.data.labels = Array.from({length: recordedMags.length}, (_, i) => i);
             mainChart.data.datasets[0].data = recordedMags; mainChart.data.datasets[1].data = recordedX; mainChart.data.datasets[2].data = recordedY; mainChart.data.datasets[3].data = recordedZ;
             mainChart.data.datasets[0].borderColor = '#ffcc00';
-            let gradientRev = ctx.createLinearGradient(0, 0, 0, 200);
-            gradientRev.addColorStop(0, 'rgba(255, 204, 0, 0.4)'); gradientRev.addColorStop(1, 'rgba(255, 204, 0, 0.0)');
-            mainChart.data.datasets[0].backgroundColor = gradientRev;
             mainChart.options.scales.x.display = true; mainChart.update();
             
             let counts = { "Ruhe": 0, "Schritt": 0, "Trab": 0, "Galopp": 0, "Bewegung": 0 };
@@ -547,7 +433,7 @@
             for (const [gait, count] of Object.entries(counts)) {
                 if (count > 0) {
                     const pct = (count / total) * 100; const segment = document.createElement('div');
-                    segment.className = `gait-segment ${colors[gait]}`; segment.style.width = `${pct}%`; segment.title = `${gait} (${pct.toFixed(0)}%)`;
+                    segment.className = `gait-segment ${colors[gait]}`; segment.style.width = `${pct}%`;
                     distDiv.appendChild(segment);
                 }
             }
@@ -559,13 +445,12 @@
             const distDiv = document.getElementById('gaitDist');
             if (appState === "IDLE") {
                 appState = "MEASURING"; recordStartTime = Date.now();
-                recordedSessionCSV = ["Time_Sec,AX,AY,AZ,GX,GY,GZ,Magnitude,Gangart"];
+                recordedSessionCSV = ["Time_Sec,AX,AY,AZ,Magnitude,Gangart"];
                 recordedMags = []; recordedX = []; recordedY = []; recordedZ = []; recordedGaits = []; 
                 distDiv.classList.remove('show');
                 btn.innerText = "STOPPEN"; btn.classList.add("active"); btn.classList.remove("review");
                 exp.disabled = true; pdf.disabled = true; exp.classList.remove("ready"); pdf.classList.remove("pdf-ready");
                 document.getElementById('valAsym').innerText = "..."; document.getElementById('valImpact').innerText = "..."; document.getElementById('valSteps').innerText = "0";
-                document.getElementById('valAsym').style.color = "var(--neon-cyan)";
             } else if (appState === "MEASURING") {
                 appState = "REVIEW"; btn.innerText = "NEUE MESSUNG"; btn.classList.remove("active"); btn.classList.add("review");
                 if (recordedSessionCSV.length > 1) { exp.disabled = false; pdf.disabled = false; exp.classList.add("ready"); pdf.classList.add("pdf-ready"); showReview(); }
