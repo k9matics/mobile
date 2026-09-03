@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-    <title>K9matics Pro Tactical v5.6</title>
+    <title>K9matics Pro Tactical v5.7</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- Externe Bibliotheken -->
@@ -87,22 +87,37 @@
         .kpi-title { font-size: 0.45rem; color: #8b949e; margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; }
         .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 1px; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,255,204,0.3); }
         
+        /* HOCHWERTIGES MILITARY-HUD / FADENKREUZ */
         #hud-radar-container { 
-            width: 100%; flex-grow: 1.5; background: #07090e; border: 1px solid #30363d; border-radius: 4px; 
-            overflow: hidden; position: relative; box-shadow: inset 0 0 15px rgba(0,0,0,0.9); min-height: 120px;
+            width: 100%; flex-grow: 1.5; background: radial-gradient(circle, #0b141f 0%, #050709 100%); 
+            border: 1px solid var(--neon-cyan); border-radius: 6px; 
+            overflow: hidden; position: relative; box-shadow: inset 0 0 20px rgba(0,255,204,0.15); min-height: 130px;
             display: flex; align-items: center; justify-content: center;
         }
-        .radar-grid {
-            position: absolute; width: 100px; height: 100px; border: 1px solid rgba(0,255,204,0.2); border-radius: 50%;
+        
+        /* Ecken-Markierungen für den Ziel-Look */
+        #hud-radar-container::before {
+            content: ''; position: absolute; inset: 6px; border: 1px dashed rgba(0,255,204,0.15); pointer-events: none;
+        }
+
+        .radar-ring {
+            position: absolute; width: 110px; height: 110px; border: 1px solid rgba(0,255,204,0.3); border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
         }
-        .radar-grid::before { content: ''; position: absolute; width: 100%; height: 1px; background: rgba(0,255,204,0.2); }
-        .radar-grid::after { content: ''; position: absolute; width: 1px; height: 100%; background: rgba(0,255,204,0.2); }
+        .radar-ring-inner {
+            position: absolute; width: 55px; height: 55px; border: 1px dotted rgba(0,255,204,0.4); border-radius: 50%;
+        }
+        /* Feine Fadenkreuz-Linien */
+        .crosshair-h { position: absolute; width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,255,204,0.5), transparent); }
+        .crosshair-v { position: absolute; width: 1px; height: 100%; background: linear-gradient(180deg, transparent, rgba(0,255,204,0.5), transparent); }
+        
         #radar-dot {
-            width: 10px; height: 10px; background: var(--neon-cyan); border-radius: 50%; position: absolute;
-            box-shadow: 0 0 10px var(--neon-cyan); transition: transform 0.05s linear;
+            width: 12px; height: 12px; background: var(--neon-cyan); border: 2px solid #fff; border-radius: 50%; position: absolute;
+            box-shadow: 0 0 12px var(--neon-cyan), 0 0 4px #fff; transition: transform 0.04s ease-out; z-index: 2;
         }
-        .hud-label { position: absolute; top: 4px; left: 6px; font-size: 0.5rem; color: var(--neon-cyan); opacity: 0.6; }
+        
+        .hud-label { position: absolute; top: 6px; left: 8px; font-size: 0.5rem; color: var(--neon-cyan); letter-spacing: 1px; opacity: 0.8; }
+        .hud-coords { position: absolute; bottom: 6px; right: 8px; font-size: 0.5rem; color: var(--neon-cyan); letter-spacing: 0.5px; opacity: 0.7; }
         
         #debugRaw { font-size: 0.5rem; color: rgba(139, 148, 158, 0.4); text-align: center; margin: 0; font-family: monospace; flex-shrink: 0; }
         
@@ -133,7 +148,7 @@
     <div id="pullRefreshIndicator">↓ Zum Aktualisieren nach unten ziehen</div>
 
     <header>
-        <h1>K9MATICS <span class="version">v5.6</span></h1>
+        <h1>K9MATICS <span class="version">v5.7</span></h1>
         <button id="calibrateBtn" class="btn btn-calib">NULLPUNKT</button>
         <button id="connectBtn" class="btn" style="border-color: var(--neon-cyan); color: var(--neon-cyan);">CONNECT</button>
     </header>
@@ -146,7 +161,7 @@
 
     <div class="dashboard">
         
-        <div class="gait-badge" id="gaitStatus">STATUS: GETRENNT (AUTO-KALIBrierung aktiv)</div>
+        <div class="gait-badge" id="gaitStatus">STATUS: GETRENNT (AUTO-KALIBRIERUNG AKTIV)</div>
         
         <div class="kpi-container">
             <div class="glass-box">
@@ -163,11 +178,16 @@
             </div>
         </div>
 
+        <!-- NEU: Professionelles High-Tech HUD Fadenkreuz -->
         <div id="hud-radar-container">
-            <div class="hud-label">G-FORCE VECTORS (X/Y)</div>
-            <div class="radar-grid">
-                <div id="radar-dot"></div>
+            <div class="hud-label">TARGET // VECTOR HUD</div>
+            <div class="crosshair-h"></div>
+            <div class="crosshair-v"></div>
+            <div class="radar-ring">
+                <div class="radar-ring-inner"></div>
             </div>
+            <div id="radar-dot"></div>
+            <div class="hud-coords" id="hudCoords">X: 0.00 | Y: 0.00</div>
         </div>
         <div id="debugRaw">Warte auf Sensordaten...</div>
 
@@ -218,11 +238,9 @@
         let recordStartTime = 0;
         let activeGait = "Ruhe";
         
-        // Offset für den Nullpunkt-Button
         let offsetX = 0, offsetY = 0, offsetZ = 0;
         let rawLastX = 0, rawLastY = 0, rawLastZ = 0;
 
-        // Auto-Adaptive Schwellenwerte (passen sich fließend an)
         let dynamicWalkTrot = 1.30;
         let dynamicTrotGallop = 2.70;
         let recentPeakHistory = [];
@@ -230,8 +248,6 @@
         function autoTuneThresholds(peakVal) {
             recentPeakHistory.push(peakVal);
             if(recentPeakHistory.length > 20) recentPeakHistory.shift();
-            
-            // Wenn genügend Daten da sind, passe die Grenzen dynamisch an den Durchschnitt an
             if(recentPeakHistory.length >= 5) {
                 const avg = recentPeakHistory.reduce((a,b)=>a+b,0) / recentPeakHistory.length;
                 if(avg > 1.2 && avg < 3.5) {
@@ -241,7 +257,6 @@
             }
         }
 
-        // Manueller Nullpunkt-Button speichert die aktuelle Lage als Offset ab
         document.getElementById('calibrateBtn').addEventListener('click', () => {
             offsetX = rawLastX;
             offsetY = rawLastY;
@@ -257,7 +272,6 @@
             }, 2000);
         });
 
-        // --- CHART SETUP ---
         const ctx = document.getElementById('mainChart').getContext('2d');
         let gradientIdle = ctx.createLinearGradient(0, 0, 0, 200);
         gradientIdle.addColorStop(0, 'rgba(0, 255, 204, 0.25)'); gradientIdle.addColorStop(1, 'rgba(0, 255, 204, 0.0)');
@@ -300,8 +314,6 @@
             if (recentAvgMag < 1.12 && peaks.length === 0) return "Ruhe";
             if (peaks.length === 0) return "Bewegung";
             const meanPeakVal = peaks.reduce((a, b) => a + b.value, 0) / peaks.length;
-            
-            // Nutzt die automatisch angepassten Schwellenwerte
             if (meanPeakVal > dynamicTrotGallop) return "Galopp";
             if (meanPeakVal >= dynamicWalkTrot && meanPeakVal <= dynamicTrotGallop) return "Trab";
             return "Schritt";
@@ -341,15 +353,17 @@
                 if (dataFound) {
                     rawLastX = ax; rawLastY = ay; rawLastZ = az;
                     
-                    // Korrektur durch Nullpunkt-Offset
                     let cleanX = ax - offsetX;
                     let cleanY = ay - offsetY;
                     let cleanZ = az - offsetZ;
 
-                    // Radar Punkt aktualisieren
+                    // Präzises HUD-Fadenkreuz Update
                     const dot = document.getElementById('radar-dot');
-                    const maxOffset = 40;
-                    dot.style.transform = `translate(${Math.max(-maxOffset, Math.min(maxOffset, cleanX * 30))}px, ${Math.max(-maxOffset, Math.min(maxOffset, cleanY * 30))}px)`;
+                    const maxOffset = 45;
+                    const moveX = Math.max(-maxOffset, Math.min(maxOffset, cleanX * 35));
+                    const moveY = Math.max(-maxOffset, Math.min(maxOffset, cleanY * 35));
+                    dot.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                    document.getElementById('hudCoords').innerText = `X: ${cleanX.toFixed(2)} | Y: ${cleanY.toFixed(2)}`;
 
                     const mag = Math.sqrt(cleanX*cleanX + cleanY*cleanY + cleanZ*cleanZ);
                     if(mag > 1.3) autoTuneThresholds(mag);
