@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v4.6</title>
+    <title>K9matics Pro 3D v4.7</title>
     <!-- Google Font: Bebas Neue -->
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <!-- Externe Bibliotheken -->
@@ -24,45 +24,45 @@
             --neon-yellow: #ffcc00; 
             --text: #c9d1d9; 
         }
-        body { margin: 0; padding: 0; background: radial-gradient(circle at top, #1a221b, var(--bg)); color: var(--text); font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        body { margin: 0; padding: 0; background: radial-gradient(circle at top, #1a221b, var(--bg)); color: var(--text); font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        header { padding: 10px 20px; background: rgba(18, 22, 28, 0.8); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(59, 83, 35, 0.4); gap: 8px; z-index: 10; }
+        header { padding: 10px 15px; background: rgba(18, 22, 28, 0.8); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(59, 83, 35, 0.4); gap: 6px; z-index: 10; }
         
-        h1 { margin: 0; font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: #fff; letter-spacing: 2px; flex-grow: 1; text-shadow: 0 0 10px rgba(59, 83, 35, 0.6); }
+        h1 { margin: 0; font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: #fff; letter-spacing: 2px; flex-grow: 1; text-shadow: 0 0 10px rgba(59, 83, 35, 0.6); }
         .version { font-size: 0.5em; color: var(--tactical-red); vertical-align: super; background: rgba(204,0,51,0.2); padding: 2px 6px; border-radius: 4px; }
         
-        .btn { background-color: var(--tactical-oliv); color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1px; cursor: pointer; white-space: nowrap; box-shadow: 0 0 10px rgba(0,0,0,0.5); transition: all 0.3s ease; }
+        .btn { background-color: var(--tactical-oliv); color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 1px; cursor: pointer; white-space: nowrap; box-shadow: 0 0 10px rgba(0,0,0,0.5); transition: all 0.3s ease; }
         .btn:active { transform: scale(0.95); }
         .btn-calib { background-color: #2b2b36; border: 1px solid #48485e; color: #fff; }
         
-        .controls { display: flex; gap: 8px; padding: 12px 20px 0 20px; }
-        .btn-measure { background-color: var(--tactical-oliv); color: #fff; flex: 1.2; font-size: 1.2rem; padding: 10px; border-radius: 8px; border: none; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; }
+        .controls { display: flex; gap: 8px; padding: 10px 15px 0 15px; }
+        .btn-measure { background-color: var(--tactical-oliv); color: #fff; flex: 1.2; font-size: 1.2rem; padding: 8px; border-radius: 8px; border: none; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; }
         .btn-measure.active { background-color: var(--tactical-red); box-shadow: 0 0 15px rgba(204, 0, 51, 0.6); animation: pulse 1.5s infinite; }
         .btn-measure.review { background-color: #b8860b; }
         
-        .btn-action { background-color: rgba(18, 22, 28, 0.8); color: #8b949e; flex: 1; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1px; }
+        .btn-action { background-color: rgba(18, 22, 28, 0.8); color: #8b949e; flex: 1; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 1px; }
         .btn-action.ready { background-color: #1f6beb; color: #fff; box-shadow: 0 0 10px rgba(31,107,235,0.4); }
         .btn-action.pdf-ready { background-color: var(--tactical-oliv-hover); color: #fff; box-shadow: 0 0 10px rgba(59,83,35,0.4); }
         
         @keyframes pulse { 0% { box-shadow: 0 0 5px rgba(204, 0, 51, 0.4); } 50% { box-shadow: 0 0 20px rgba(204, 0, 51, 0.8); } 100% { box-shadow: 0 0 5px rgba(204, 0, 51, 0.4); } }
         
-        .dashboard { padding: 12px 20px; flex-grow: 1; display: flex; flex-direction: column; }
-        .gait-badge { align-self: center; background: rgba(18, 22, 28, 0.8); backdrop-filter: blur(8px); border: 1px solid var(--tactical-oliv); padding: 4px 16px; border-radius: 20px; font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1.5px; color: var(--neon-yellow); margin-bottom: 10px; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .dashboard { padding: 10px 15px; flex-grow: 1; display: flex; flex-direction: column; }
+        .gait-badge { align-self: center; background: rgba(18, 22, 28, 0.8); backdrop-filter: blur(8px); border: 1px solid var(--tactical-oliv); padding: 4px 16px; border-radius: 20px; font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 1.5px; color: var(--neon-yellow); margin-bottom: 8px; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         
-        .kpi-container { display: flex; gap: 10px; margin-bottom: 10px; }
-        .glass-box { background: rgba(18, 22, 28, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(59, 83, 35, 0.3); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4); padding: 8px; border-radius: 12px; flex: 1; text-align: center; }
-        .kpi-title { font-size: 0.65rem; color: #8b949e; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
-        .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 1px; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,255,204,0.3); }
+        .kpi-container { display: flex; gap: 8px; margin-bottom: 8px; }
+        .glass-box { background: rgba(18, 22, 28, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(59, 83, 35, 0.3); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4); padding: 6px; border-radius: 12px; flex: 1; text-align: center; }
+        .kpi-title { font-size: 0.6rem; color: #8b949e; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+        .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 1px; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,255,204,0.3); }
         
-        .tuning-panel { display: none; background: rgba(18, 22, 28, 0.9); backdrop-filter: blur(8px); padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--tactical-oliv); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .btn-tune { flex: 1; font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 1px; padding: 6px 4px; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+        .tuning-panel { display: none; background: rgba(18, 22, 28, 0.9); backdrop-filter: blur(8px); padding: 10px; border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--tactical-oliv); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn-tune { flex: 1; font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem; letter-spacing: 1px; padding: 6px 4px; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
         
-        #model3D-container { width: 100%; height: 180px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(59, 83, 35, 0.3); border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); position: relative;}
+        #model3D-container { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(59, 83, 35, 0.3); border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); position: relative;}
         #loader-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--tactical-red); font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 2px; animation: pulse 1s infinite;}
-        #debugRaw { font-size: 0.65rem; color: rgba(139, 148, 158, 0.4); text-align: center; margin: 4px 0 8px 0; font-family: monospace; }
+        #debugRaw { font-size: 0.65rem; color: rgba(139, 148, 158, 0.4); text-align: center; margin: 4px 0 6px 0; font-family: monospace; }
         
-        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 120px; }
-        .gait-distribution { display: none; height: 8px; width: 100%; border-radius: 4px; margin-top: 10px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 100px; }
+        .gait-distribution { display: none; height: 8px; width: 100%; border-radius: 4px; margin-top: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
         .gait-distribution.show { display: flex; }
         .gait-segment { height: 100%; }
         .gait-schritt { background-color: #3fb950; }
@@ -74,10 +74,11 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">v4.6</span></h1>
-        <button id="toggleTuningBtn" class="btn btn-action" style="font-size:0.9rem; padding:6px 10px;">⚙️ Profil</button>
-        <button id="calibrateBtn" class="btn btn-calib">Nullpunkt</button>
-        <button id="connectBtn" class="btn">Connect</button>
+        <h1>K9MATICS <span class="version">v4.7</span></h1>
+        <button id="toggleFullscreenBtn" class="btn btn-action" style="font-size:0.8rem; padding:6px 8px;" title="Vollbild">⛶ Vollbild</button>
+        <button id="toggleTuningBtn" class="btn btn-action" style="font-size:0.8rem; padding:6px 8px;">⚙️ Profil</button>
+        <button id="calibrateBtn" class="btn btn-calib" style="font-size:0.8rem; padding:6px 8px;">Nullpunkt</button>
+        <button id="connectBtn" class="btn" style="font-size:0.8rem; padding:6px 8px;">Connect</button>
     </header>
 
     <div class="controls">
@@ -89,13 +90,13 @@
     <div class="dashboard">
         
         <div class="tuning-panel" id="tuningPanel">
-            <div style="font-family: 'Bebas Neue'; font-size: 1rem; letter-spacing: 1px; color: #fff; margin-bottom: 6px;">DYNAMISCHES PROFIL (START / STOP)</div>
+            <div style="font-family: 'Bebas Neue'; font-size: 0.9rem; letter-spacing: 1px; color: #fff; margin-bottom: 6px;">DYNAMISCHES PROFIL (START / STOP)</div>
             <div style="display: flex; gap: 6px;">
                 <button id="btnLearnWalk" class="btn-tune" style="background:#3fb950;">Schritt</button>
                 <button id="btnLearnTrot" class="btn-tune" style="background:var(--tactical-oliv);">Trab</button>
                 <button id="btnLearnGallop" class="btn-tune" style="background:var(--tactical-red);">Galopp</button>
             </div>
-            <div id="tuningStatus" style="font-size: 0.7rem; color: #8b949e; margin-top: 6px; text-align: center;">Profil: Trab > 1.30G | Galopp > 2.70G</div>
+            <div id="tuningStatus" style="font-size: 0.65rem; color: #8b949e; margin-top: 6px; text-align: center;">Profil: Trab > 1.30G | Galopp > 2.70G</div>
         </div>
 
         <div class="gait-badge" id="gaitStatus">Status: Nicht verbunden</div>
@@ -150,6 +151,19 @@
         let valAvgWalk = 1.15, valAvgTrot = 2.00, valAvgGallop = 3.50;
         let threshWalkTrot = 1.30, threshTrotGallop = 2.70;
         let learningBuffer = [], activeLearningGait = "";
+
+        // --- VOLLBILD SCHALTER ---
+        document.getElementById('toggleFullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert("Vollbild nicht unterstützt: " + err.message);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
 
         function updateThresholds() {
             threshWalkTrot = valAvgWalk + ((valAvgTrot - valAvgWalk) / 2);
