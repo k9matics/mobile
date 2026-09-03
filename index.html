@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>K9matics Pro 3D v4.1</title>
+    <title>K9matics Pro 3D v4.2</title>
     <!-- Externe Bibliotheken -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- OBJ Loader für deinen echten 3D-Hund -->
+    <!-- OBJ Loader -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     
     <style>
@@ -43,7 +43,8 @@
         .kpi-title { font-size: 0.7rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .kpi-value { font-size: 1.4rem; font-weight: bold; color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,255,204,0.3); transition: color 0.3s ease; }
         
-        #model3D-container { width: 100%; height: 180px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        #model3D-container { width: 100%; height: 180px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); position: relative;}
+        #loader-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--neon-pink); font-weight: bold; font-size: 0.8rem; letter-spacing: 1px; animation: pulse 1s infinite;}
         #debugRaw { font-size: 0.65rem; color: rgba(139, 148, 158, 0.5); text-align: center; margin: 6px 0 10px 0; font-family: monospace; }
         
         .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 120px; }
@@ -59,7 +60,7 @@
 <body>
 
     <header>
-        <h1>K9MATICS <span class="version">PRO v4.1</span></h1>
+        <h1>K9MATICS <span class="version">PRO v4.2</span></h1>
         <button id="calibrateBtn" class="btn btn-calib">Nullpunkt</button>
         <button id="connectBtn" class="btn">Connect</button>
     </header>
@@ -88,7 +89,9 @@
             </div>
         </div>
 
-        <div id="model3D-container"></div>
+        <div id="model3D-container">
+            <div id="loader-text">LADE 3D MODELL...</div>
+        </div>
         <div id="debugRaw">Warte auf Sensordaten...</div>
 
         <div class="chart-container">
@@ -122,7 +125,6 @@
         const container3D = document.getElementById('model3D-container');
         const scene = new THREE.Scene();
         
-        // Holografisches Bodenraster hinzufügen
         const gridHelper = new THREE.GridHelper(10, 20, 0x00ffcc, 0x30363d);
         gridHelper.position.y = -1.2;
         scene.add(gridHelper);
@@ -132,8 +134,7 @@
         renderer.setSize(container3D.clientWidth, container3D.clientHeight);
         container3D.appendChild(renderer.domElement);
 
-        // Beleuchtung
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
         hemiLight.position.set(0, 20, 0);
         scene.add(hemiLight);
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -143,27 +144,44 @@
         const sensor3D = new THREE.Group(); 
         scene.add(sensor3D);
 
-        // ECHTES 3D-MODELL LADEN (Der Canaan Dog .obj)
+        // --- ECHTES MODELL LADEN MIT ZENTRIERUNG ---
         const loader = new THREE.OBJLoader();
         loader.load('13466_Canaan_Dog_v1_L3.obj', function (object) {
             
-            // Dem Hund das "Hologramm"-Design geben
+            document.getElementById('loader-text').style.display = 'none';
+
             object.traverse(function (child) {
                 if (child.isMesh) {
                     child.material = new THREE.MeshPhysicalMaterial({ 
                         color: 0x00ffcc, 
                         transparent: true, 
-                        opacity: 0.7,
-                        wireframe: true // Macht ihn zu einem Neon-Gitternetz
+                        opacity: 0.5,
+                        wireframe: true 
                     });
                 }
             });
 
-            // Skalierung und Position anpassen
-            object.scale.set(0.05, 0.05, 0.05); 
-            object.position.set(0, -1.2, 0); // Leicht nach unten schieben
+            // ZENTRIERUNGS-ALGORITHMUS
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
             
-            sensor3D.add(object);
+            object.position.x = -center.x;
+            object.position.y = -center.y;
+            object.position.z = -center.z;
+
+            const wrapper = new THREE.Group();
+            wrapper.add(object);
+            
+            // Skalierung je nach Größe der Obj-Datei (0.08 ist ein guter Startwert für Canaan)
+            wrapper.scale.set(0.08, 0.08, 0.08); 
+            wrapper.position.set(0, -1.0, 0); 
+            
+            sensor3D.add(wrapper);
+            
+        }, undefined, function (error) {
+            document.getElementById('loader-text').innerText = "ERROR 404: DATEI FEHLT";
+            document.getElementById('loader-text').style.color = "red";
+            console.error("Modell nicht gefunden:", error);
         });
 
         camera.position.set(3.5, 2.5, 4.5);
@@ -188,7 +206,6 @@
             filterPitch = 0.96 * (filterPitch + gyRad * dt) + 0.04 * accPitch;
             filterYaw += gzRad * dt; 
 
-            // Kalibrierung anwenden
             sensor3D.rotation.set(filterPitch - pitchOffset, filterYaw - yawOffset, filterRoll - rollOffset);
             renderer.render(scene, camera);
         }
