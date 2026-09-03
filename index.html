@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-    <title>K9matics Pro Tactical v5.7</title>
+    <title>K9matics Pro Tactical v5.8</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <!-- Externe Bibliotheken -->
@@ -87,35 +87,26 @@
         .kpi-title { font-size: 0.45rem; color: #8b949e; margin-bottom: 1px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; }
         .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 1px; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0,255,204,0.3); }
         
-        /* HOCHWERTIGES MILITARY-HUD / FADENKREUZ */
+        /* 6-AXIS HUD FADENKREUZ */
         #hud-radar-container { 
             width: 100%; flex-grow: 1.5; background: radial-gradient(circle, #0b141f 0%, #050709 100%); 
             border: 1px solid var(--neon-cyan); border-radius: 6px; 
-            overflow: hidden; position: relative; box-shadow: inset 0 0 20px rgba(0,255,204,0.15); min-height: 130px;
+            overflow: hidden; position: relative; box-shadow: inset 0 0 20px rgba(0,255,204,0.15); min-height: 120px;
             display: flex; align-items: center; justify-content: center;
         }
-        
-        /* Ecken-Markierungen für den Ziel-Look */
         #hud-radar-container::before {
             content: ''; position: absolute; inset: 6px; border: 1px dashed rgba(0,255,204,0.15); pointer-events: none;
         }
-
         .radar-ring {
-            position: absolute; width: 110px; height: 110px; border: 1px solid rgba(0,255,204,0.3); border-radius: 50%;
+            position: absolute; width: 100px; height: 100px; border: 1px solid rgba(0,255,204,0.3); border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
         }
-        .radar-ring-inner {
-            position: absolute; width: 55px; height: 55px; border: 1px dotted rgba(0,255,204,0.4); border-radius: 50%;
-        }
-        /* Feine Fadenkreuz-Linien */
         .crosshair-h { position: absolute; width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,255,204,0.5), transparent); }
         .crosshair-v { position: absolute; width: 1px; height: 100%; background: linear-gradient(180deg, transparent, rgba(0,255,204,0.5), transparent); }
-        
         #radar-dot {
             width: 12px; height: 12px; background: var(--neon-cyan); border: 2px solid #fff; border-radius: 50%; position: absolute;
             box-shadow: 0 0 12px var(--neon-cyan), 0 0 4px #fff; transition: transform 0.04s ease-out; z-index: 2;
         }
-        
         .hud-label { position: absolute; top: 6px; left: 8px; font-size: 0.5rem; color: var(--neon-cyan); letter-spacing: 1px; opacity: 0.8; }
         .hud-coords { position: absolute; bottom: 6px; right: 8px; font-size: 0.5rem; color: var(--neon-cyan); letter-spacing: 0.5px; opacity: 0.7; }
         
@@ -148,7 +139,7 @@
     <div id="pullRefreshIndicator">↓ Zum Aktualisieren nach unten ziehen</div>
 
     <header>
-        <h1>K9MATICS <span class="version">v5.7</span></h1>
+        <h1>K9MATICS <span class="version">v5.8</span></h1>
         <button id="calibrateBtn" class="btn btn-calib">NULLPUNKT</button>
         <button id="connectBtn" class="btn" style="border-color: var(--neon-cyan); color: var(--neon-cyan);">CONNECT</button>
     </header>
@@ -161,7 +152,7 @@
 
     <div class="dashboard">
         
-        <div class="gait-badge" id="gaitStatus">STATUS: GETRENNT (AUTO-KALIBRIERUNG AKTIV)</div>
+        <div class="gait-badge" id="gaitStatus">STATUS: GETRENNT (6-AXIS TELEMETRIE)</div>
         
         <div class="kpi-container">
             <div class="glass-box">
@@ -178,18 +169,16 @@
             </div>
         </div>
 
-        <!-- NEU: Professionelles High-Tech HUD Fadenkreuz -->
+        <!-- 6-Axis HUD Vektor Anzeige -->
         <div id="hud-radar-container">
-            <div class="hud-label">TARGET // VECTOR HUD</div>
+            <div class="hud-label">6-AXIS TELEMETRY // HUD</div>
             <div class="crosshair-h"></div>
             <div class="crosshair-v"></div>
-            <div class="radar-ring">
-                <div class="radar-ring-inner"></div>
-            </div>
+            <div class="radar-ring"></div>
             <div id="radar-dot"></div>
-            <div class="hud-coords" id="hudCoords">X: 0.00 | Y: 0.00</div>
+            <div class="hud-coords" id="hudCoords">AX: 0.00 | AY: 0.00</div>
         </div>
-        <div id="debugRaw">Warte auf Sensordaten...</div>
+        <div id="debugRaw">Warte auf 6-Achsen-Sensordaten...</div>
 
         <div class="chart-container">
             <canvas id="mainChart"></canvas>
@@ -226,15 +215,19 @@
         let bleDevice;
         const LIVE_BUFFER_SIZE = 100;
         
+        // 6 Achsen + Magnitude Buffer
         let magData = Array(LIVE_BUFFER_SIZE).fill(0);
-        let xData = Array(LIVE_BUFFER_SIZE).fill(0);
-        let yData = Array(LIVE_BUFFER_SIZE).fill(0);
-        let zData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let axData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let ayData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let azData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let gxData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let gyData = Array(LIVE_BUFFER_SIZE).fill(0);
+        let gzData = Array(LIVE_BUFFER_SIZE).fill(0);
         let timeData = Array.from({length: LIVE_BUFFER_SIZE}, (_, i) => i);
         let buffer = "";
 
         let appState = "IDLE"; 
-        let recordedMags = [], recordedX = [], recordedY = [], recordedZ = [], recordedGaits = [], recordedSessionCSV = [];
+        let recordedMags = [], recordedAX = [], recordedAY = [], recordedAZ = [], recordedGX = [], recordedGY = [], recordedGZ = [], recordedGaits = [], recordedSessionCSV = [];
         let recordStartTime = 0;
         let activeGait = "Ruhe";
         
@@ -272,6 +265,7 @@
             }, 2000);
         });
 
+        // Chart Setup für alle 6 Achsen + Magnitude
         const ctx = document.getElementById('mainChart').getContext('2d');
         let gradientIdle = ctx.createLinearGradient(0, 0, 0, 200);
         gradientIdle.addColorStop(0, 'rgba(0, 255, 204, 0.25)'); gradientIdle.addColorStop(1, 'rgba(0, 255, 204, 0.0)');
@@ -284,19 +278,22 @@
             data: { 
                 labels: timeData, 
                 datasets: [
-                    { label: 'Kraft', data: magData, borderColor: 'var(--neon-cyan)', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: gradientIdle, tension: 0.2 },
-                    { label: 'X', data: xData, borderColor: 'rgba(179,0,45,0.5)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
-                    { label: 'Y', data: yData, borderColor: 'rgba(63,185,80,0.5)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
-                    { label: 'Z', data: zData, borderColor: 'rgba(88,166,255,0.5)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false }
+                    { label: 'Kraft (Mag)', data: magData, borderColor: 'var(--neon-cyan)', borderWidth: 2, pointRadius: 0, fill: true, backgroundColor: gradientIdle, tension: 0.2 },
+                    { label: 'AX', data: axData, borderColor: 'rgba(179,0,45,0.6)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'AY', data: ayData, borderColor: 'rgba(63,185,80,0.6)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'AZ', data: azData, borderColor: 'rgba(88,166,255,0.6)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'GX', data: gxData, borderColor: 'rgba(255,204,0,0.6)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'GY', data: gyData, borderColor: 'rgba(255,100,0,0.6)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false },
+                    { label: 'GZ', data: gzData, borderColor: 'rgba(200,100,255,0.6)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false }
                 ] 
             },
             options: { 
                 responsive: true, maintainAspectRatio: false, animation: false, 
                 scales: { 
                     x: { display: false }, 
-                    y: { suggestedMin: -1.5, suggestedMax: 2.5, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', font: { size: 9 } } } 
+                    y: { suggestedMin: -2.0, suggestedMax: 3.0, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#8b949e', font: { size: 9 } } } 
                 }, 
-                plugins: { legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 8, font: { size: 9 } } } } 
+                plugins: { legend: { display: true, labels: { color: '#c9d1d9', boxWidth: 6, font: { size: 8 } } } } 
             }
         });
 
@@ -331,7 +328,7 @@
                 characteristic.addEventListener('characteristicvaluechanged', handleData);
                 
                 btn.innerText = "VERBUNDEN"; btn.style.backgroundColor = "var(--tactical-red)"; btn.style.color = "#fff";
-                document.getElementById('gaitStatus').innerText = "STATUS: BEREIT (AUTO)";
+                document.getElementById('gaitStatus').innerText = "STATUS: BEREIT (6-AXIS)";
                 setInterval(updateDashboard, 100);
             } catch (error) { document.getElementById('connectBtn').innerText = "CONNECT"; }
         }
@@ -345,10 +342,15 @@
                 line = line.trim(); if(!line) continue;
                 document.getElementById('debugRaw').innerText = "Raw: " + line;
 
-                let ax = 0, ay = 0, az = 0; let dataFound = false;
-                let mX = line.match(/(?:A?X):\s*([-\d\.]+)/i); if(mX) { ax = parseFloat(mX[1]); dataFound = true; }
-                let mY = line.match(/(?:A?Y):\s*([-\d\.]+)/i); if(mY) { ay = parseFloat(mY[1]); dataFound = true; }
-                let mZ = line.match(/(?:A?Z):\s*([-\d\.]+)/i); if(mZ) { az = parseFloat(mZ[1]); dataFound = true; }
+                let ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0; let dataFound = false;
+                
+                // Regex für 6 Achsen (AX, AY, AZ, GX, GY, GZ)
+                let mAX = line.match(/(?:AX|A?X):\s*([-\d\.]+)/i); if(mAX) { ax = parseFloat(mAX[1]); dataFound = true; }
+                let mAY = line.match(/(?:AY|A?Y):\s*([-\d\.]+)/i); if(mAY) { ay = parseFloat(mAY[1]); dataFound = true; }
+                let mAZ = line.match(/(?:AZ|A?Z):\s*([-\d\.]+)/i); if(mAZ) { az = parseFloat(mAZ[1]); dataFound = true; }
+                let mGX = line.match(/GX:\s*([-\d\.]+)/i); if(mGX) { gx = parseFloat(mGX[1]); }
+                let mGY = line.match(/GY:\s*([-\d\.]+)/i); if(mGY) { gy = parseFloat(mGY[1]); }
+                let mGZ = line.match(/GZ:\s*([-\d\.]+)/i); if(mGZ) { gz = parseFloat(mGZ[1]); }
 
                 if (dataFound) {
                     rawLastX = ax; rawLastY = ay; rawLastZ = az;
@@ -357,23 +359,33 @@
                     let cleanY = ay - offsetY;
                     let cleanZ = az - offsetZ;
 
-                    // Präzises HUD-Fadenkreuz Update
+                    // HUD Fadenkreuz Update
                     const dot = document.getElementById('radar-dot');
                     const maxOffset = 45;
                     const moveX = Math.max(-maxOffset, Math.min(maxOffset, cleanX * 35));
                     const moveY = Math.max(-maxOffset, Math.min(maxOffset, cleanY * 35));
                     dot.style.transform = `translate(${moveX}px, ${moveY}px)`;
-                    document.getElementById('hudCoords').innerText = `X: ${cleanX.toFixed(2)} | Y: ${cleanY.toFixed(2)}`;
+                    document.getElementById('hudCoords').innerText = `AX: ${cleanX.toFixed(2)} | AY: ${cleanY.toFixed(2)}`;
 
                     const mag = Math.sqrt(cleanX*cleanX + cleanY*cleanY + cleanZ*cleanZ);
                     if(mag > 1.3) autoTuneThresholds(mag);
 
-                    magData.push(mag); magData.shift(); xData.push(cleanX); xData.shift(); yData.push(cleanY); yData.shift(); zData.push(cleanZ); zData.shift();
+                    // Pushing in all 6-axis buffers
+                    magData.push(mag); magData.shift(); 
+                    axData.push(cleanX); axData.shift(); 
+                    ayData.push(cleanY); ayData.shift(); 
+                    azData.push(cleanZ); azData.shift();
+                    gxData.push(gx); gxData.shift();
+                    gyData.push(gy); gyData.shift();
+                    gzData.push(gz); gzData.shift();
 
                     if (appState === "MEASURING") {
                         const timestamp = ((now - recordStartTime) / 1000).toFixed(3);
-                        recordedMags.push(mag); recordedX.push(cleanX); recordedY.push(cleanY); recordedZ.push(cleanZ); recordedGaits.push(activeGait);
-                        recordedSessionCSV.push(`${timestamp},${cleanX},${cleanY},${cleanZ},${mag.toFixed(3)},${activeGait}`);
+                        recordedMags.push(mag); 
+                        recordedAX.push(cleanX); recordedAY.push(cleanY); recordedAZ.push(cleanZ);
+                        recordedGX.push(gx); recordedGY.push(gy); recordedGZ.push(gz);
+                        recordedGaits.push(activeGait);
+                        recordedSessionCSV.push(`${timestamp},${cleanX},${cleanY},${cleanZ},${gx},${gy},${gz},${mag.toFixed(3)},${activeGait}`);
                     }
                 }
             }
@@ -414,7 +426,13 @@
 
         function showReview() {
             mainChart.data.labels = Array.from({length: recordedMags.length}, (_, i) => i);
-            mainChart.data.datasets[0].data = recordedMags; mainChart.data.datasets[1].data = recordedX; mainChart.data.datasets[2].data = recordedY; mainChart.data.datasets[3].data = recordedZ;
+            mainChart.data.datasets[0].data = recordedMags; 
+            mainChart.data.datasets[1].data = recordedAX; 
+            mainChart.data.datasets[2].data = recordedAY; 
+            mainChart.data.datasets[3].data = recordedAZ;
+            mainChart.data.datasets[4].data = recordedGX;
+            mainChart.data.datasets[5].data = recordedGY;
+            mainChart.data.datasets[6].data = recordedGZ;
             mainChart.data.datasets[0].borderColor = '#ffcc00';
             mainChart.options.scales.x.display = true; mainChart.update();
             
@@ -437,8 +455,8 @@
             const distDiv = document.getElementById('gaitDist');
             if (appState === "IDLE") {
                 appState = "MEASURING"; recordStartTime = Date.now();
-                recordedSessionCSV = ["Time_Sec,AX,AY,AZ,Magnitude,Gangart"];
-                recordedMags = []; recordedX = []; recordedY = []; recordedZ = []; recordedGaits = []; 
+                recordedSessionCSV = ["Time_Sec,AX,AY,AZ,GX,GY,GZ,Magnitude,Gangart"];
+                recordedMags = []; recordedAX = []; recordedAY = []; recordedAZ = []; recordedGX = []; recordedGY = []; recordedGZ = []; recordedGaits = []; 
                 distDiv.classList.remove('show');
                 btn.innerText = "STOPPEN"; btn.classList.add("active"); btn.classList.remove("review");
                 exp.disabled = true; pdf.disabled = true; exp.classList.remove("ready"); pdf.classList.remove("pdf-ready");
@@ -450,7 +468,8 @@
                 appState = "IDLE"; btn.innerText = "STARTEN"; btn.classList.remove("review");
                 exp.disabled = true; pdf.disabled = true; exp.classList.remove("ready"); pdf.classList.remove("pdf-ready"); distDiv.classList.remove('show');
                 mainChart.data.labels = timeData; mainChart.data.datasets[0].data = magData; 
-                mainChart.data.datasets[1].data = xData; mainChart.data.datasets[2].data = yData; mainChart.data.datasets[3].data = zData;
+                mainChart.data.datasets[1].data = axData; mainChart.data.datasets[2].data = ayData; mainChart.data.datasets[3].data = azData;
+                mainChart.data.datasets[4].data = gxData; mainChart.data.datasets[5].data = gyData; mainChart.data.datasets[6].data = gzData;
                 mainChart.options.scales.x.display = false; mainChart.update();
                 document.getElementById('valAsym').innerText = "-- %"; document.getElementById('valImpact').innerText = "-- G"; document.getElementById('valSteps').innerText = "0";
                 document.getElementById('gaitStatus').innerText = "STATUS: BEREIT";
@@ -461,14 +480,14 @@
             if (recordedSessionCSV.length <= 1) return;
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([recordedSessionCSV.join("\n")], { type: 'text/csv;charset=utf-8;' }));
-            link.download = `k9_lauf_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.csv`;
+            link.download = `k9_6axis_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.csv`;
             link.click();
         });
 
         document.getElementById('pdfBtn').addEventListener('click', () => {
             if (appState !== "REVIEW") return;
             const doc = new window.jspdf.jsPDF();
-            doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text("K9MATICS PRO - Laufbericht", 14, 20);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text("K9MATICS PRO - 6-Axis Bericht", 14, 20);
             doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(`Datum: ${new Date().toLocaleString()}`, 14, 28);
             doc.setDrawColor(200, 200, 200); doc.line(14, 33, 196, 33);
             doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.text("Messwerte:", 14, 43);
@@ -477,7 +496,7 @@
             doc.text(`Mittlere Stoßkraft: ${document.getElementById('valImpact').innerText}`, 14, 60);
             doc.text(`Schritte: ${document.getElementById('valSteps').innerText}`, 14, 68);
             doc.addImage(mainChart.toBase64Image(), 'PNG', 14, 78, 182, 90);
-            doc.save(`k9_lauf_bericht_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.pdf`);
+            doc.save(`k9_6axis_bericht_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.pdf`);
         });
 
         document.getElementById('connectBtn').addEventListener('click', connectBluetooth);
