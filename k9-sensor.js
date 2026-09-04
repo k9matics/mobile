@@ -1,23 +1,25 @@
 "use strict";
 
 /*
-  K9MATICS HARNESS v2.6.2
+  K9MATICS HARNESS v2.7
 
-  XIAO nRF52840
-  Adafruit Bluefruit BLEUart
-  Nordic UART Service
+  Unterstützte Sensordaten:
 
-  Firmware-Datenformat:
-  X:0.12 Y:-0.04 Z:1.08
+  1. Einzelner Zahlenwert:
+     7
+     42
+     255
 
-  WICHTIG:
-  Alle UUIDs sind Strings in Kleinbuchstaben.
-  Kein Uint8Array verwenden.
+  2. X/Y/Z-Textformat:
+     X:0.12 Y:-0.04 Z:1.08
+
+  Der Zahlenmodus ist ein Verbindungstest.
+  Der X/Y/Z-Modus ist die echte IMU-Auswertung.
 */
 
 window.K9Sensor = (() => {
   const CONFIG = {
-    deviceName: "K9matics",
+    deviceName: "K9MATICS",
 
     serviceUuid:
       "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
@@ -67,17 +69,13 @@ window.K9Sensor = (() => {
       .trim();
   }
 
-  function parsePacket(text) {
-    const cleanedText = text.trim();
-
-    const match = cleanedText.match(
+  function parseXYZPacket(text) {
+    const match = text.match(
       /X:\s*(-?\d+(?:\.\d+)?)\s+Y:\s*(-?\d+(?:\.\d+)?)\s+Z:\s*(-?\d+(?:\.\d+)?)/i
     );
 
     if (!match) {
-      throw new Error(
-        `UNBEKANNTES SENSORPAKET: ${cleanedText}`
-      );
+      return null;
     }
 
     return {
@@ -89,8 +87,64 @@ window.K9Sensor = (() => {
       gyroY: 0,
       gyroZ: 0,
 
-      raw: cleanedText
+      packetType: "xyz",
+      raw: text
     };
+  }
+
+  function parseSingleNumberPacket(text) {
+    const clean = text.trim();
+
+    if (!/^-?\d+(?:\.\d+)?$/.test(clean)) {
+      return null;
+    }
+
+    const rawValue = Number(clean);
+
+    /*
+      Der einzelne Wert ist aktuell kein echter
+      X/Y/Z-Sensorwert. Wir geben ihn sichtbar aus
+      und erzeugen eine Testbewegung für die UI.
+    */
+    const scaledValue = rawValue / 100;
+
+    return {
+      accX: 0,
+      accY: 0,
+      accZ: scaledValue,
+
+      gyroX: 0,
+      gyroY: 0,
+      gyroZ: 0,
+
+      packetType: "single-value",
+      raw: clean
+    };
+  }
+
+  function parsePacket(text) {
+    const clean = text.trim();
+
+    if (!clean) {
+      throw new Error("LEERES SENSORPAKET");
+    }
+
+    const xyzPacket = parseXYZPacket(clean);
+
+    if (xyzPacket) {
+      return xyzPacket;
+    }
+
+    const singleNumberPacket =
+      parseSingleNumberPacket(clean);
+
+    if (singleNumberPacket) {
+      return singleNumberPacket;
+    }
+
+    throw new Error(
+      `UNBEKANNTES SENSORPAKET: ${clean}`
+    );
   }
 
   function handleNotification(event) {
@@ -118,6 +172,7 @@ window.K9Sensor = (() => {
           gyroY: packet.gyroY,
           gyroZ: packet.gyroZ,
 
+          packetType: packet.packetType,
           raw: packet.raw
         });
       });
