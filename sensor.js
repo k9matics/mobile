@@ -1,44 +1,94 @@
-#include <bluefruit.h>
-#include <LSM6DS3.h>
-#include <Wire.h>
+"use strict";
 
-LSM6DS3 myIMU(I2C_MODE, 0x6A);
-BLEUart bleuart;
+/*
+  K9MATICS HARNESS v2.4.1
+  Sensor-Anbindung für:
+  Seeed Studio XIAO nRF52840
+  Adafruit Bluefruit BLEUart
+  Nordic UART Service
 
-void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
-  Bluefruit.begin();
-  Bluefruit.setTxPower(4); 
-  Bluefruit.setName("K9matics");
-  Bluefruit.Advertising.restartOnDisconnect(true);
-  
-  bleuart.begin();
-  Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
-  Bluefruit.Advertising.addService(bleuart);
-  Bluefruit.ScanResponse.addName();
-  Bluefruit.Advertising.start(0); 
+  Firmware-Datenformat:
+  X:0.12 Y:-0.04 Z:1.08
+*/
 
-  Wire.begin();
-  myIMU.begin();
-}
+const Sensor = (() => {
+  const CONFIG = {
+    deviceNamePrefix: "K9MATICS",
 
-void loop() {
-  if (Bluefruit.connected()) {
-    digitalWrite(LED_BUILTIN, LOW);
-    
-    float x = myIMU.readFloatAccelX();
-    float y = myIMU.readFloatAccelY();
-    float z = myIMU.readFloatAccelZ();
+    serviceUuid:
+      "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
 
-    // Alles zu einem einzigen sauberen String zusammenbauen
-    String dataPacket = "X:" + String(x, 2) + " Y:" + String(y, 2) + " Z:" + String(z, 2);
-    bleuart.println(dataPacket);
-    
-    delay(50); 
-  } else {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(500);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
+    txCharacteristicUuid:
+      "6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
+
+    rxCharacteristicUuid:
+      "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+  };
+
+  let device = null;
+  let txCharacteristic = null;
+  let rxCharacteristic = null;
+  let connected = false;
+
+  const listeners = {
+    data: [],
+    status: [],
+    error: []
+  };
+
+  function on(type, callback) {
+    if (!listeners[type]) {
+      listeners[type] = [];
+    }
+
+    listeners[type].push(callback);
   }
-}
+
+  function emit(type, value) {
+    (listeners[type] || []).forEach(callback => {
+      callback(value);
+    });
+  }
+
+  function parseK9maticsPacket(text) {
+    const cleanedText = text.trim();
+
+    const match = cleanedText.match(
+      /X:\s*(-?\d+(?:\.\d+)?)\s+Y:\s*(-?\d+(?:\.\d+)?)\s+Z:\s*(-?\d+(?:\.\d+)?)/i
+    );
+
+    if (!match) {
+      throw new Error(
+        `UNBEKANNTES PAKET: ${cleanedText}`
+      );
+    }
+
+    return {
+      accX: Number(match[1]),
+      accY: Number(match[2]),
+      accZ: Number(match[3]),
+
+      gyroX: 0,
+      gyroY: 0,
+      gyroZ: 0,
+
+      raw: cleanedText
+    };
+  }
+
+  function decodeNotification(dataView) {
+    const bytes = new Uint8Array(
+      dataView.buffer,
+      dataView.byteOffset,
+      dataView.byteLength
+    );
+
+    return new TextDecoder("utf-8")
+      .decode(bytes)
+      .replace(/\0/g, "")
+      .trim();
+  }
+
+  function handleNotification(event) {
+    try {
+      c
