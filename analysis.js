@@ -1,19 +1,13 @@
 "use strict";
 
 /*
-  CANINE GAIT HUD
-  analysis.js
-  Version 2.2
-
-  Bewegungsberechnung für alle Hundegrößen.
-  Hinweis:
-  Die Werte sind technische Indikatoren und
-  keine tierärztliche Diagnose.
+  HARNELYZER
+  Bewegungsberechnung
 */
 
 const Analysis = (() => {
   const history = [];
-  const MAX_HISTORY = 300;
+  const MAX_HISTORY = 240;
 
   let reference = null;
 
@@ -39,7 +33,7 @@ const Analysis = (() => {
   function calculateTilt(accX, accY, accZ) {
     const x = Number(accX) || 0;
     const y = Number(accY) || 0;
-    const z = Number(accZ) || 0;
+    const z = Number(accZ) || 1;
 
     const roll =
       Math.atan2(y, z) *
@@ -60,23 +54,7 @@ const Analysis = (() => {
     };
   }
 
-  function addSample(sample) {
-    history.push(sample);
-
-    if (history.length > MAX_HISTORY) {
-      history.shift();
-    }
-
-    return calculate();
-  }
-
-  function getDynamicValues() {
-    return history.map(item => {
-      return Number(item.dynamicAcceleration) || 0;
-    });
-  }
-
-  function calculateAverage(values) {
+  function average(values) {
     if (!values.length) {
       return 0;
     }
@@ -87,13 +65,80 @@ const Analysis = (() => {
     ) / values.length;
   }
 
-  function calculateRegularity() {
-    if (history.length < 20) {
+  function addSample(sample) {
+    history.push(sample);
+
+    while (history.length > MAX_HISTORY) {
+      history.shift();
+    }
+
+    return calculate();
+  }
+
+  function calculateCadence() {
+    if (history.length < 30) {
       return 0;
     }
 
-    const values = getDynamicValues();
-    const mean = calculateAverage(values);
+    const peaks = [];
+
+    for (
+      let i = 1;
+      i < history.length - 1;
+      i++
+    ) {
+      const previous =
+        history[i - 1].dynamicAcceleration;
+
+      const current =
+        history[i].dynamicAcceleration;
+
+      const next =
+        history[i + 1].dynamicAcceleration;
+
+      if (
+        current > previous &&
+        current > next &&
+        current > 0.08
+      ) {
+        peaks.push(history[i]);
+      }
+    }
+
+    if (peaks.length < 2) {
+      return 0;
+    }
+
+    const intervals = [];
+
+    for (let i = 1; i < peaks.length; i++) {
+      const seconds =
+        (peaks[i].timestamp -
+          peaks[i - 1].timestamp) /
+        1000;
+
+      if (seconds > 0.2 && seconds < 4) {
+        intervals.push(seconds);
+      }
+    }
+
+    if (!intervals.length) {
+      return 0;
+    }
+
+    return 60 / average(intervals);
+  }
+
+  function calculateRegularity() {
+    if (history.length < 30) {
+      return 0;
+    }
+
+    const values = history.map(item => {
+      return item.dynamicAcceleration;
+    });
+
+    const mean = average(values);
 
     if (mean < 0.01) {
       return 0;
@@ -107,14 +152,11 @@ const Analysis = (() => {
         );
       }, 0) / values.length;
 
-    const standardDeviation =
+    const deviation =
       Math.sqrt(variance);
 
-    const coefficient =
-      standardDeviation / mean;
-
     return clamp(
-      100 - coefficient * 100,
+      100 - (deviation / mean) * 100,
       0,
       100
     );
@@ -125,34 +167,20 @@ const Analysis = (() => {
       return 0;
     }
 
-    const leftValues = history
+    const left = history
       .filter(item => item.roll >= 0)
-      .map(item => {
-        return Math.abs(
-          Number(item.dynamicAcceleration) || 0
-        );
-      });
+      .map(item => item.dynamicAcceleration);
 
-    const rightValues = history
+    const right = history
       .filter(item => item.roll < 0)
-      .map(item => {
-        return Math.abs(
-          Number(item.dynamicAcceleration) || 0
-        );
-      });
+      .map(item => item.dynamicAcceleration);
 
-    if (
-      !leftValues.length ||
-      !rightValues.length
-    ) {
+    if (!left.length || !right.length) {
       return 0;
     }
 
-    const leftAverage =
-      calculateAverage(leftValues);
-
-    const rightAverage =
-      calculateAverage(rightValues);
+    const leftAverage = average(left);
+    const rightAverage = average(right);
 
     const denominator = Math.max(
       (leftAverage + rightAverage) / 2,
@@ -160,75 +188,20 @@ const Analysis = (() => {
     );
 
     return clamp(
-      Math.abs(
-        leftAverage - rightAverage
-      ) /
-      denominator *
-      100,
+      Math.abs(leftAverage - rightAverage) /
+        denominator *
+        100,
       0,
       100
     );
   }
 
-  function estimateCadence() {
-    if (history.length < 15) {
-      return 0;
-    }
-
-    const values = getDynamicValues();
-    const peaks = [];
-
-    for (let index = 1; index < values.length - 1; index++) {
-      const previous = values[index - 1];
-      const current = values[index];
-      const next = values[index + 1];
-
-      if (
-        current > previous &&
-        current > next &&
-        current > 0.08
-      ) {
-        peaks.push(index);
-      }
-    }
-
-    if (peaks.length < 2) {
-      return 0;
-    }
-
-    const intervals = [];
-
-    for (let index = 1; index < peaks.length; index++) {
-      const currentTime =
-        history[peaks[index]].timestamp;
-
-      const previousTime =
-        history[peaks[index - 1]].timestamp;
-
-      const seconds =
-        (currentTime - previousTime) / 1000;
-
-      if (seconds > 0.15 && seconds < 5) {
-        intervals.push(seconds);
-      }
-    }
-
-    if (!intervals.length) {
-      return 0;
-    }
-
-    const averageInterval =
-      calculateAverage(intervals);
-
-    return 60 / averageInterval;
-  }
-
-  function detectGait(cadence) {
-    if (history.length < 20) {
+  function gaitFromCadence(cadence) {
+    if (history.length < 25) {
       return "WARTEN";
     }
 
-    if (cadence < 1.2) {
+    if (cadence < 1) {
       return "RUHE";
     }
 
@@ -244,28 +217,27 @@ const Analysis = (() => {
   }
 
   function calculate() {
-    const cadence = estimateCadence();
+    const cadence = calculateCadence();
     const regularity = calculateRegularity();
     const asymmetry = calculateAsymmetry();
 
     let status = "NORMAL";
 
-    if (history.length < 20) {
+    if (history.length < 25) {
       status = "ZU WENIG DATEN";
     } else if (asymmetry >= 35) {
-      status = "AUFFÄLLIGE ASYMMETRIE";
+      status = "ASYMMETRIE ERKANNT";
     } else if (regularity < 45) {
-      status = "UNREGELMÄSSIGE BEWEGUNG";
+      status = "UNREGELMÄSSIG";
     } else if (
       reference &&
-      asymmetry >
-      reference.asymmetry + 20
+      asymmetry > reference.asymmetry + 20
     ) {
-      status = "VERÄNDERUNG ZUR REFERENZ";
+      status = "ABWEICHUNG ZUR REFERENZ";
     }
 
     return {
-      gait: detectGait(cadence),
+      gait: gaitFromCadence(cadence),
       cadence,
       regularity,
       asymmetry,
@@ -277,9 +249,9 @@ const Analysis = (() => {
     const result = calculate();
 
     reference = {
-      timestamp: Date.now(),
+      asymmetry: result.asymmetry,
       regularity: result.regularity,
-      asymmetry: result.asymmetry
+      timestamp: Date.now()
     };
 
     return reference;
@@ -290,17 +262,11 @@ const Analysis = (() => {
     reference = null;
   }
 
-  function getHistory() {
-    return [...history];
-  }
-
   return {
     magnitude,
     calculateTilt,
     addSample,
-    calculate,
     setReference,
-    reset,
-    getHistory
+    reset
   };
 })();
