@@ -1,8 +1,19 @@
 "use strict";
 
+/*
+  CANINE GAIT HUD
+  analysis.js
+  Version 2.2
+
+  Bewegungsberechnung für alle Hundegrößen.
+  Hinweis:
+  Die Werte sind technische Indikatoren und
+  keine tierärztliche Diagnose.
+*/
+
 const Analysis = (() => {
   const history = [];
-  const maxHistory = 300;
+  const MAX_HISTORY = 300;
 
   let reference = null;
 
@@ -14,26 +25,31 @@ const Analysis = (() => {
   }
 
   function magnitude(x, y, z) {
+    const safeX = Number(x) || 0;
+    const safeY = Number(y) || 0;
+    const safeZ = Number(z) || 0;
+
     return Math.sqrt(
-      x * x +
-      y * y +
-      z * z
+      safeX * safeX +
+      safeY * safeY +
+      safeZ * safeZ
     );
   }
 
   function calculateTilt(accX, accY, accZ) {
+    const x = Number(accX) || 0;
+    const y = Number(accY) || 0;
+    const z = Number(accZ) || 0;
+
     const roll =
-      Math.atan2(accY, accZ) *
+      Math.atan2(y, z) *
       180 /
       Math.PI;
 
     const pitch =
       Math.atan2(
-        -accX,
-        Math.sqrt(
-          accY * accY +
-          accZ * accZ
-        )
+        -x,
+        Math.sqrt(y * y + z * z)
       ) *
       180 /
       Math.PI;
@@ -44,7 +60,23 @@ const Analysis = (() => {
     };
   }
 
-  function average(values) {
+  function addSample(sample) {
+    history.push(sample);
+
+    if (history.length > MAX_HISTORY) {
+      history.shift();
+    }
+
+    return calculate();
+  }
+
+  function getDynamicValues() {
+    return history.map(item => {
+      return Number(item.dynamicAcceleration) || 0;
+    });
+  }
+
+  function calculateAverage(values) {
     if (!values.length) {
       return 0;
     }
@@ -55,156 +87,190 @@ const Analysis = (() => {
     ) / values.length;
   }
 
-  function standardDeviation(values) {
-    if (values.length < 2) {
+  function calculateRegularity() {
+    if (history.length < 20) {
       return 0;
     }
 
-    const mean = average(values);
+    const values = getDynamicValues();
+    const mean = calculateAverage(values);
 
-    const variance = average(
-      values.map(value => {
-        return Math.pow(value - mean, 2);
-      })
-    );
-
-    return Math.sqrt(variance);
-  }
-
-  function getRecentSamples(count = 80) {
-    return history.slice(-count);
-  }
-
-  function calculateShift() {
-    const samples = getRecentSamples();
-
-    if (samples.length < 10) {
+    if (mean < 0.01) {
       return 0;
     }
 
-    return average(
-      samples.map(sample => sample.roll)
-    );
-  }
+    const variance =
+      values.reduce((sum, value) => {
+        return sum + Math.pow(
+          value - mean,
+          2
+        );
+      }, 0) / values.length;
 
-  function calculateStability() {
-    const samples = getRecentSamples();
+    const standardDeviation =
+      Math.sqrt(variance);
 
-    if (samples.length < 20) {
-      return 0;
-    }
-
-    const rollValues = samples.map(
-      sample => sample.roll
-    );
-
-    const pitchValues = samples.map(
-      sample => sample.pitch
-    );
-
-    const dynamicValues = samples.map(
-      sample => sample.dynamicAcceleration
-    );
-
-    const variation =
-      standardDeviation(rollValues) +
-      standardDeviation(pitchValues) +
-      standardDeviation(dynamicValues) * 15;
+    const coefficient =
+      standardDeviation / mean;
 
     return clamp(
-      100 - variation * 4,
+      100 - coefficient * 100,
       0,
       100
     );
   }
 
-  function calculateFitScore() {
-    const stability = calculateStability();
+  function calculateAsymmetry() {
+    if (history.length < 40) {
+      return 0;
+    }
 
-    const shift =
-      Math.abs(calculateShift());
+    const leftValues = history
+      .filter(item => item.roll >= 0)
+      .map(item => {
+        return Math.abs(
+          Number(item.dynamicAcceleration) || 0
+        );
+      });
+
+    const rightValues = history
+      .filter(item => item.roll < 0)
+      .map(item => {
+        return Math.abs(
+          Number(item.dynamicAcceleration) || 0
+        );
+      });
+
+    if (
+      !leftValues.length ||
+      !rightValues.length
+    ) {
+      return 0;
+    }
+
+    const leftAverage =
+      calculateAverage(leftValues);
+
+    const rightAverage =
+      calculateAverage(rightValues);
+
+    const denominator = Math.max(
+      (leftAverage + rightAverage) / 2,
+      0.01
+    );
 
     return clamp(
-      stability - shift * 1.5,
+      Math.abs(
+        leftAverage - rightAverage
+      ) /
+      denominator *
+      100,
       0,
       100
     );
   }
 
-  function getFitLabel(score) {
+  function estimateCadence() {
+    if (history.length < 15) {
+      return 0;
+    }
+
+    const values = getDynamicValues();
+    const peaks = [];
+
+    for (let index = 1; index < values.length - 1; index++) {
+      const previous = values[index - 1];
+      const current = values[index];
+      const next = values[index + 1];
+
+      if (
+        current > previous &&
+        current > next &&
+        current > 0.08
+      ) {
+        peaks.push(index);
+      }
+    }
+
+    if (peaks.length < 2) {
+      return 0;
+    }
+
+    const intervals = [];
+
+    for (let index = 1; index < peaks.length; index++) {
+      const currentTime =
+        history[peaks[index]].timestamp;
+
+      const previousTime =
+        history[peaks[index - 1]].timestamp;
+
+      const seconds =
+        (currentTime - previousTime) / 1000;
+
+      if (seconds > 0.15 && seconds < 5) {
+        intervals.push(seconds);
+      }
+    }
+
+    if (!intervals.length) {
+      return 0;
+    }
+
+    const averageInterval =
+      calculateAverage(intervals);
+
+    return 60 / averageInterval;
+  }
+
+  function detectGait(cadence) {
     if (history.length < 20) {
       return "WARTEN";
     }
 
-    if (score >= 80) {
-      return "STABIL";
+    if (cadence < 1.2) {
+      return "RUHE";
     }
 
-    if (score >= 60) {
-      return "PRÜFEN";
+    if (cadence < 2.4) {
+      return "SCHRITT";
     }
 
-    if (score >= 40) {
-      return "INSTABIL";
+    if (cadence < 4.5) {
+      return "TRAB";
     }
 
-    return "AUFFÄLLIG";
-  }
-
-  function getStatus(result) {
-    if (history.length < 20) {
-      return "ZU WENIG DATEN";
-    }
-
-    if (result.fitScore < 40) {
-      return "PRÜFUNG EMPFOHLEN";
-    }
-
-    if (Math.abs(result.shift) > 15) {
-      return "SEITENVERSCHIEBUNG";
-    }
-
-    if (result.stability < 60) {
-      return "GESCHIRR UNRUHIG";
-    }
-
-    if (
-      reference &&
-      result.fitScore <
-      reference.fitScore - 20
-    ) {
-      return "ABWEICHUNG ZUR REFERENZ";
-    }
-
-    return "PASSFORM STABIL";
-  }
-
-  function addSample(sample) {
-    history.push(sample);
-
-    if (history.length > maxHistory) {
-      history.shift();
-    }
-
-    return calculate();
+    return "LAUFEN";
   }
 
   function calculate() {
-    const shift = calculateShift();
-    const stability = calculateStability();
-    const fitScore = calculateFitScore();
+    const cadence = estimateCadence();
+    const regularity = calculateRegularity();
+    const asymmetry = calculateAsymmetry();
 
-    const result = {
-      shift,
-      stability,
-      fitScore,
-      fitLabel: getFitLabel(fitScore),
-      rotationAvailable: false
+    let status = "NORMAL";
+
+    if (history.length < 20) {
+      status = "ZU WENIG DATEN";
+    } else if (asymmetry >= 35) {
+      status = "AUFFÄLLIGE ASYMMETRIE";
+    } else if (regularity < 45) {
+      status = "UNREGELMÄSSIGE BEWEGUNG";
+    } else if (
+      reference &&
+      asymmetry >
+      reference.asymmetry + 20
+    ) {
+      status = "VERÄNDERUNG ZUR REFERENZ";
+    }
+
+    return {
+      gait: detectGait(cadence),
+      cadence,
+      regularity,
+      asymmetry,
+      status
     };
-
-    result.status = getStatus(result);
-
-    return result;
   }
 
   function setReference() {
@@ -212,9 +278,8 @@ const Analysis = (() => {
 
     reference = {
       timestamp: Date.now(),
-      fitScore: result.fitScore,
-      stability: result.stability,
-      shift: result.shift
+      regularity: result.regularity,
+      asymmetry: result.asymmetry
     };
 
     return reference;
@@ -225,12 +290,17 @@ const Analysis = (() => {
     reference = null;
   }
 
+  function getHistory() {
+    return [...history];
+  }
+
   return {
     magnitude,
     calculateTilt,
     addSample,
     calculate,
     setReference,
-    reset
+    reset,
+    getHistory
   };
 })();
