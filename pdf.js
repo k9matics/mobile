@@ -1,9 +1,20 @@
 "use strict";
 
+/*
+  CANINE GAIT HUD
+  pdf.js
+  Version 2.2
+
+  Erstellt einen kompakten Messbericht.
+*/
+
 async function exportToPDF() {
-  if (!window.jspdf?.jsPDF) {
+  if (
+    !window.jspdf ||
+    !window.jspdf.jsPDF
+  ) {
     throw new Error(
-      "PDF-BIBLIOTHEK NICHT GELADEN"
+      "PDF-BIBLIOTHEK WURDE NICHT GELADEN"
     );
   }
 
@@ -15,16 +26,35 @@ async function exportToPDF() {
     "a4"
   );
 
-  const getText = id =>
-    document.getElementById(id).textContent;
+  function textOf(id) {
+    const element =
+      document.getElementById(id);
 
-  const dogSize =
-    document.getElementById("dogSize").value;
+    return element
+      ? element.textContent.trim()
+      : "—";
+  }
 
-  const sensorPosition =
+  const dogSizeElement =
+    document.getElementById("dogSize");
+
+  const sensorPositionElement =
     document.getElementById(
       "sensorPosition"
-    ).value;
+    );
+
+  const dogSize =
+    dogSizeElement?.selectedOptions?.[0]
+      ?.textContent ||
+    "—";
+
+  const sensorPosition =
+    sensorPositionElement?.selectedOptions?.[0]
+      ?.textContent ||
+    "—";
+
+  const date = new Date()
+    .toLocaleString("de-DE");
 
   pdf.setFillColor(5, 7, 9);
   pdf.rect(0, 0, 210, 297, "F");
@@ -34,91 +64,92 @@ async function exportToPDF() {
   pdf.setFontSize(18);
 
   pdf.text(
-    "K9MATICS HARNESS REPORT",
+    "CANINE GAIT HUD",
     14,
     18
   );
+
+  pdf.setFontSize(8);
+
+  pdf.text(
+    "Technischer Bewegungsbericht",
+    14,
+    24
+  );
+
+  pdf.setDrawColor(0, 255, 204);
+  pdf.line(14, 28, 196, 28);
 
   pdf.setTextColor(201, 209, 217);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
 
-  pdf.text(
-    `Passform: ${getText("kpiFit")}`,
-    14,
-    32
-  );
-
-  pdf.text(
-    `Stabilität: ${getText("kpiStability")}`,
-    14,
-    40
-  );
-
-  pdf.text(
-    `Verschiebung: ${getText("kpiShift")}`,
-    14,
-    48
-  );
-
-  pdf.text(
-    `Rotation: ${getText("kpiRotation")}`,
-    14,
-    56
-  );
-
-  pdf.text(
-    `Status: ${getText("analysisStatus")}`,
-    14,
-    64
-  );
-
-  pdf.text(
+  const reportLines = [
+    `Datum: ${date}`,
     `Hundegröße: ${dogSize}`,
-    14,
-    72
-  );
-
-  pdf.text(
     `Sensorposition: ${sensorPosition}`,
-    14,
-    80
-  );
+    `Gangart: ${textOf("kpiGait")}`,
+    `Schrittfrequenz: ${textOf("kpiCadence")} Schritte/min`,
+    `Regelmäßigkeit: ${textOf("kpiRegularity")}`,
+    `Asymmetrie: ${textOf("kpiAsymmetry")}`,
+    `Bewegungsintensität: ${textOf("motionValue")}`,
+    `Neigung links/rechts: ${textOf("rollValue")}`,
+    `Neigung vorne/hinten: ${textOf("pitchValue")}`,
+    `Status: ${textOf("analysisStatus")}`
+  ];
 
-  pdf.text(
-    `Datum: ${new Date().toLocaleString("de-DE")}`,
-    14,
-    88
-  );
+  let y = 40;
 
-  const chart =
+  reportLines.forEach(line => {
+    pdf.text(line, 14, y);
+    y += 8;
+  });
+
+  const chartElement =
     document.getElementById("sensorChart");
 
-  const image =
-    chart.toDataURL("image/png", 1);
+  if (chartElement) {
+    try {
+      const image = chartElement.toDataURL(
+        "image/png",
+        1
+      );
 
-  pdf.addImage(
-    image,
-    "PNG",
-    14,
-    100,
-    182,
-    75
-  );
+      pdf.addImage(
+        image,
+        "PNG",
+        14,
+        138,
+        182,
+        72
+      );
+    } catch (error) {
+      console.warn(
+        "Diagramm konnte nicht in PDF eingebettet werden.",
+        error
+      );
+    }
+  }
 
-  pdf.setDrawColor(0, 255, 204);
-  pdf.line(14, 184, 196, 184);
+  pdf.setDrawColor(48, 54, 61);
+  pdf.line(14, 222, 196, 222);
 
   pdf.setTextColor(139, 148, 158);
   pdf.setFontSize(8);
 
   pdf.text(
-    "Technische Geschirr-Bewegungsanalyse. Kein Drucktest und keine tierärztliche Diagnose.",
+    "Hinweis: Diese Anwendung dient der technischen Beobachtung.",
     14,
-    194
+    232
+  );
+
+  pdf.text(
+    "Sie ersetzt keine tierärztliche Untersuchung oder Diagnose.",
+    14,
+    238
   );
 
   pdf.save(
-    `k9matics-harness-${Date.now()}.pdf`
+    `canine-gait-report-${Date.now()}.pdf`
   );
 }
