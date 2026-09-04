@@ -1,5 +1,10 @@
 "use strict";
 
+/*
+  K9MATICS HARNESS v2.5
+  Lokale Speicherung und CSV-Export.
+*/
+
 const Storage = (() => {
   const STORAGE_KEY =
     "k9matics-harness-measurements";
@@ -11,7 +16,7 @@ const Storage = (() => {
       ) || [];
     } catch (error) {
       console.warn(
-        "Lokale K9MATICS-Daten nicht lesbar.",
+        "Lokale K9MATICS-Daten konnten nicht gelesen werden.",
         error
       );
 
@@ -48,7 +53,8 @@ const Storage = (() => {
       "totalAcceleration",
       "dynamicAcceleration",
       "roll",
-      "pitch"
+      "pitch",
+      "raw"
     ];
 
     const output = [
@@ -58,7 +64,13 @@ const Storage = (() => {
     rows.forEach(row => {
       output.push(
         columns
-          .map(column => row[column] ?? "")
+          .map(column => {
+            const value = row[column] ?? "";
+
+            return String(value)
+              .replace(/;/g, ",")
+              .replace(/\r?\n/g, " ");
+          })
           .join(";")
       );
     });
