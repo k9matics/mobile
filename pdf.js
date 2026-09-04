@@ -1,6 +1,30 @@
+"use strict";
+
 async function exportToPDF() {
+  if (!window.jspdf?.jsPDF) {
+    throw new Error(
+      "PDF-BIBLIOTHEK NICHT GELADEN"
+    );
+  }
+
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF("p", "mm", "a4");
+
+  const pdf = new jsPDF(
+    "p",
+    "mm",
+    "a4"
+  );
+
+  const getText = id =>
+    document.getElementById(id).textContent;
+
+  const dogSize =
+    document.getElementById("dogSize").value;
+
+  const sensorPosition =
+    document.getElementById(
+      "sensorPosition"
+    ).value;
 
   pdf.setFillColor(5, 7, 9);
   pdf.rect(0, 0, 210, 297, "F");
@@ -8,30 +32,93 @@ async function exportToPDF() {
   pdf.setTextColor(0, 255, 204);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(18);
-  pdf.text("GAIT HUD REPORT", 14, 18);
+
+  pdf.text(
+    "K9MATICS HARNESS REPORT",
+    14,
+    18
+  );
 
   pdf.setTextColor(201, 209, 217);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
-  pdf.text(`Status: ${document.getElementById("gaitBadge").textContent}`, 14, 28);
-  pdf.text(`Schritt: ${document.getElementById("kpiStep").textContent}`, 14, 36);
-  pdf.text(`Trab: ${document.getElementById("kpiTrab").textContent}`, 14, 42);
-  pdf.text(`Galopp: ${document.getElementById("kpiGalopp").textContent}`, 14, 48);
 
-  const canvas = document.getElementById("gaitChart");
-  const img = canvas.toDataURL("image/png", 1.0);
-  pdf.addImage(img, "PNG", 14, 60, 182, 70);
+  pdf.text(
+    `Passform: ${getText("kpiFit")}`,
+    14,
+    32
+  );
 
-  const coords = document.getElementById("hudCoords").textContent;
-  pdf.text(`HUD: ${coords}`, 14, 140);
-  pdf.text(`Erstellt: ${new Date().toLocaleString("de-DE")}`, 14, 148);
+  pdf.text(
+    `Stabilität: ${getText("kpiStability")}`,
+    14,
+    40
+  );
+
+  pdf.text(
+    `Verschiebung: ${getText("kpiShift")}`,
+    14,
+    48
+  );
+
+  pdf.text(
+    `Rotation: ${getText("kpiRotation")}`,
+    14,
+    56
+  );
+
+  pdf.text(
+    `Analyse: ${getText("analysisStatus")}`,
+    14,
+    64
+  );
+
+  pdf.text(
+    `Hundegröße: ${dogSize}`,
+    14,
+    72
+  );
+
+  pdf.text(
+    `Sensorposition: ${sensorPosition}`,
+    14,
+    80
+  );
+
+  pdf.text(
+    `Datum: ${new Date().toLocaleString("de-DE")}`,
+    14,
+    88
+  );
+
+  const chart =
+    document.getElementById("sensorChart");
+
+  const image =
+    chart.toDataURL("image/png", 1);
+
+  pdf.addImage(
+    image,
+    "PNG",
+    14,
+    100,
+    182,
+    75
+  );
 
   pdf.setDrawColor(0, 255, 204);
-  pdf.line(14, 155, 196, 155);
+  pdf.line(14, 184, 196, 184);
 
   pdf.setTextColor(139, 148, 158);
   pdf.setFontSize(8);
-  pdf.text("Exportiert aus dem Gait HUD System", 14, 164);
 
-  pdf.save("gait-hud-report.pdf");
+  pdf.text(
+    "Technische Geschirr-Bewegungsanalyse. Kein Drucktest und keine tierärztliche Diagnose.",
+    14,
+    194
+  );
+
+  pdf.save(
+    `k9matics-harness-${Date.now()}.pdf`
+  );
 }
