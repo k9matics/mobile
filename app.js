@@ -1,17 +1,7 @@
 "use strict";
 
-/*
-  K9MATICS HARNESS v2.5
-  Hauptanwendung.
-
-  Wichtig:
-  Diese Datei verwendet ausschließlich K9Sensor.
-  Der alte Name Sensor wird hier nirgends genutzt.
-*/
-
-const APP_VERSION = "2.5";
+const APP_VERSION = "2.6";
 const MAX_CHART_POINTS = 120;
-const PULL_THRESHOLD = 70;
 
 const el = {
   btnRefresh: document.getElementById("btnRefresh"),
@@ -30,13 +20,11 @@ const el = {
   chartMode:
     document.getElementById("chartMode"),
 
-  appScrollArea:
-    document.getElementById("appScrollArea"),
-
   harnessBadge:
     document.getElementById("harnessBadge"),
 
-  fit: document.getElementById("kpiFit"),
+  fit:
+    document.getElementById("kpiFit"),
 
   stability:
     document.getElementById("kpiStability"),
@@ -69,52 +57,33 @@ const el = {
     document.getElementById("analysisStatus"),
 
   debugRaw:
-    document.getElementById("debugRaw"),
-
-  pullRefreshIndicator:
-    document.getElementById(
-      "pullRefreshIndicator"
-    ),
-
-  pullRefreshText:
-    document.getElementById(
-      "pullRefreshText"
-    )
+    document.getElementById("debugRaw")
 };
 
 let measuring = false;
 let demoRunning = false;
 let sensorConnected = false;
 let currentRows = [];
-
-let touchStartY = 0;
-let touchCurrentY = 0;
-let pullActive = false;
 let refreshing = false;
 
 const DOG_PROFILES = {
   toy: {
-    label: "Sehr klein",
     movementFactor: 1.35
   },
 
   small: {
-    label: "Klein",
     movementFactor: 1.15
   },
 
   medium: {
-    label: "Mittel",
     movementFactor: 1
   },
 
   large: {
-    label: "Groß",
     movementFactor: 0.85
   },
 
   giant: {
-    label: "Sehr groß",
     movementFactor: 0.7
   }
 };
@@ -322,48 +291,45 @@ function updateRadar(shift, pitch) {
     `KIPPUNG: ${safeShift.toFixed(1)}°`;
 }
 
-function normalizeSensorData(data) {
-  return {
-    timestamp:
-      Number(data.timestamp) || Date.now(),
-
-    accX: Number(data.accX) || 0,
-    accY: Number(data.accY) || 0,
-    accZ: Number(data.accZ) || 0,
-
-    gyroX: Number(data.gyroX) || 0,
-    gyroY: Number(data.gyroY) || 0,
-    gyroZ: Number(data.gyroZ) || 0,
-
-    raw: data.raw ?? ""
-  };
-}
-
-function updateData(inputData) {
-  const data =
-    normalizeSensorData(inputData);
+function updateData(data) {
+  const accX = Number(data.accX) || 0;
+  const accY = Number(data.accY) || 0;
+  const accZ = Number(data.accZ) || 0;
 
   const totalAcceleration =
     Analysis.magnitude(
-      data.accX,
-      data.accY,
-      data.accZ
+      accX,
+      accY,
+      accZ
     );
 
   const tilt =
     Analysis.calculateTilt(
-      data.accX,
-      data.accY,
-      data.accZ
+      accX,
+      accY,
+      accZ
     );
 
   const dynamicAcceleration =
     Math.abs(totalAcceleration - 1);
 
   const sample = {
-    ...data,
+    timestamp:
+      Number(data.timestamp) || Date.now(),
+
+    accX,
+    accY,
+    accZ,
+
+    gyroX: 0,
+    gyroY: 0,
+    gyroZ: 0,
+
+    raw: data.raw ?? "",
+
     totalAcceleration,
     dynamicAcceleration,
+
     roll: tilt.roll,
     pitch: tilt.pitch
   };
@@ -377,18 +343,13 @@ function updateData(inputData) {
     currentRows.shift();
   }
 
-  if (data.raw !== "") {
+  if (sample.raw !== "") {
     el.debugRaw.textContent =
-      `RAW: ${data.raw}`;
-  } else {
-    el.debugRaw.textContent =
-      `X:${data.accX.toFixed(2)} ` +
-      `Y:${data.accY.toFixed(2)} ` +
-      `Z:${data.accZ.toFixed(2)}`;
+      `RAW: ${sample.raw}`;
   }
 
   const time =
-    new Date(data.timestamp)
+    new Date(sample.timestamp)
       .toLocaleTimeString(
         "de-DE",
         {
@@ -399,17 +360,9 @@ function updateData(inputData) {
 
   chart.data.labels.push(time);
 
-  chart.data.datasets[0].data.push(
-    data.accY
-  );
-
-  chart.data.datasets[1].data.push(
-    data.accX
-  );
-
-  chart.data.datasets[2].data.push(
-    data.accZ
-  );
+  chart.data.datasets[0].data.push(accY);
+  chart.data.datasets[1].data.push(accX);
+  chart.data.datasets[2].data.push(accZ);
 
   chart.data.datasets[3].data.push(
     totalAcceleration
@@ -437,20 +390,13 @@ function updateData(inputData) {
   el.shift.textContent =
     `${result.shift.toFixed(1)}°`;
 
-  /*
-    Aktuelle Sensorfirmware sendet keine
-    Gyroskopwerte. Daher ehrlich anzeigen:
-  */
-  el.rotation.textContent =
-    result.rotationAvailable
-      ? "AKTIV"
-      : "N/V";
+  el.rotation.textContent = "N/V";
 
   el.verticalValue.textContent =
-    `${Math.abs(data.accZ).toFixed(2)} g`;
+    `${Math.abs(accZ).toFixed(2)} g`;
 
   el.lateralValue.textContent =
-    `${Math.abs(data.accY).toFixed(2)} g`;
+    `${Math.abs(accY).toFixed(2)} g`;
 
   el.pitchValue.textContent =
     `${tilt.pitch.toFixed(1)}°`;
@@ -521,10 +467,6 @@ function createDemoData() {
       0.3 *
       factor,
 
-    gyroX: 0,
-    gyroY: 0,
-    gyroZ: 0,
-
     raw: "DEMO"
   };
 }
@@ -552,7 +494,7 @@ async function connectSensor() {
       typeof window.K9Sensor.connect !== "function"
     ) {
       throw new Error(
-        "K9-SENSOR-DATEI NICHT GELADEN. BITTE VERSION 2.5 VOLLSTÄNDIG HOCHLADEN."
+        "K9-SENSOR-DATEI FEHLT ODER IST ALT"
       );
     }
 
@@ -571,10 +513,7 @@ async function connectSensor() {
   } catch (error) {
     sensorConnected = false;
 
-    console.error(
-      "K9MATICS Sensorfehler:",
-      error
-    );
+    console.error(error);
 
     setStatus(
       `FEHLER: ${error.message}`
@@ -673,10 +612,9 @@ function changeChartMode(mode) {
     chart.data.datasets;
 
   if (mode === "motion") {
-    datasets[0].hidden = false;
-    datasets[1].hidden = false;
-    datasets[2].hidden = false;
-    datasets[3].hidden = false;
+    datasets.forEach(dataset => {
+      dataset.hidden = false;
+    });
 
     chart.options.scales.y.title.text =
       "Beschleunigung";
@@ -704,165 +642,12 @@ function refreshPage() {
 
   el.btnRefresh.classList.add("loading");
 
-  el.pullRefreshIndicator.classList.add(
-    "ready"
-  );
-
-  el.pullRefreshIndicator.style.transform =
-    "translateY(52px)";
-
-  el.pullRefreshText.textContent =
-    "AKTUALISIERE...";
+  setStatus("AKTUALISIERE...");
 
   setTimeout(() => {
     window.location.reload();
   }, 250);
 }
-
-function resetPullIndicator() {
-  el.pullRefreshIndicator.style.transform =
-    "translateY(0)";
-
-  el.pullRefreshIndicator.classList.remove(
-    "ready"
-  );
-
-  el.pullRefreshText.textContent =
-    "ZUM AKTUALISIEREN ZIEHEN";
-}
-
-function updatePullIndicator(distance) {
-  const visibleDistance =
-    Math.min(distance * 0.7, 90);
-
-  el.pullRefreshIndicator.style.transform =
-    `translateY(${visibleDistance}px)`;
-
-  if (distance >= PULL_THRESHOLD) {
-    el.pullRefreshIndicator.classList.add(
-      "ready"
-    );
-
-    el.pullRefreshText.textContent =
-      "LOS LASSEN ZUM AKTUALISIEREN";
-  } else {
-    el.pullRefreshIndicator.classList.remove(
-      "ready"
-    );
-
-    el.pullRefreshText.textContent =
-      "ZUM AKTUALISIEREN ZIEHEN";
-  }
-}
-
-function handlePullTouchStart(event) {
-  if (
-    refreshing ||
-    !event.touches ||
-    event.touches.length !== 1
-  ) {
-    return;
-  }
-
-  if (el.appScrollArea.scrollTop > 0) {
-    return;
-  }
-
-  touchStartY =
-    event.touches[0].clientY;
-
-  touchCurrentY =
-    touchStartY;
-
-  pullActive = true;
-}
-
-function handlePullTouchMove(event) {
-  if (
-    !pullActive ||
-    refreshing ||
-    !event.touches ||
-    event.touches.length !== 1
-  ) {
-    return;
-  }
-
-  touchCurrentY =
-    event.touches[0].clientY;
-
-  const distance =
-    touchCurrentY - touchStartY;
-
-  if (distance <= 0) {
-    resetPullIndicator();
-    return;
-  }
-
-  if (el.appScrollArea.scrollTop > 0) {
-    pullActive = false;
-    resetPullIndicator();
-    return;
-  }
-
-  if (distance > 4) {
-    event.preventDefault();
-  }
-
-  updatePullIndicator(distance);
-}
-
-function handlePullTouchEnd() {
-  if (!pullActive || refreshing) {
-    return;
-  }
-
-  const distance =
-    touchCurrentY - touchStartY;
-
-  pullActive = false;
-
-  if (distance >= PULL_THRESHOLD) {
-    refreshPage();
-    return;
-  }
-
-  resetPullIndicator();
-}
-
-el.appScrollArea.addEventListener(
-  "touchstart",
-  handlePullTouchStart,
-  {
-    passive: true
-  }
-);
-
-el.appScrollArea.addEventListener(
-  "touchmove",
-  handlePullTouchMove,
-  {
-    passive: false
-  }
-);
-
-el.appScrollArea.addEventListener(
-  "touchend",
-  handlePullTouchEnd,
-  {
-    passive: true
-  }
-);
-
-el.appScrollArea.addEventListener(
-  "touchcancel",
-  () => {
-    pullActive = false;
-    resetPullIndicator();
-  },
-  {
-    passive: true
-  }
-);
 
 el.btnRefresh.addEventListener(
   "click",
@@ -963,10 +748,6 @@ if (
         updateData(data);
       }
     }
-  );
-} else {
-  console.error(
-    "K9Sensor wurde nicht geladen. Prüfe k9-sensor.js."
   );
 }
 
