@@ -5,12 +5,12 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1"
+    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
   >
 
   <meta name="theme-color" content="#050709">
 
-  <title>K9MATICS HARNESS v2.2</title>
+  <title>K9MATICS HARNESS v2.4</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,7 @@
 </head>
 
 <body>
-  <div id="pullRefreshIndicator">
+  <div id="pullRefreshIndicator" aria-live="polite">
     <span id="pullRefreshText">ZUM AKTUALISIEREN ZIEHEN</span>
   </div>
 
@@ -32,17 +32,35 @@
     <div class="brand">
       <h1>
         K9MATICS
-        <span class="version">v2.2</span>
+        <span class="version">v2.4</span>
       </h1>
 
       <p>HARNESS ANALYSIS</p>
     </div>
 
-    <button id="btnConnect" class="btn btn-connect">
+    <button
+      id="btnRefresh"
+      class="btn btn-refresh"
+      type="button"
+      title="Seite aktualisieren"
+      aria-label="Seite aktualisieren"
+    >
+      ↻
+    </button>
+
+    <button
+      id="btnConnect"
+      class="btn btn-connect"
+      type="button"
+    >
       SENSOR
     </button>
 
-    <button id="btnCalib" class="btn btn-calib">
+    <button
+      id="btnCalib"
+      class="btn btn-calib"
+      type="button"
+    >
       CALIB
     </button>
   </header>
@@ -73,24 +91,40 @@
   </section>
 
   <section class="controls">
-    <button id="btnMeasure" class="btn btn-measure">
+    <button
+      id="btnMeasure"
+      class="btn btn-measure"
+      type="button"
+    >
       ANALYSE STARTEN
     </button>
 
-    <button id="btnDemo" class="btn-action">
+    <button
+      id="btnDemo"
+      class="btn-action"
+      type="button"
+    >
       DEMO
     </button>
 
-    <button id="btnSave" class="btn-action">
+    <button
+      id="btnSave"
+      class="btn-action"
+      type="button"
+    >
       CSV
     </button>
 
-    <button id="btnPdf" class="btn-action">
+    <button
+      id="btnPdf"
+      class="btn-action"
+      type="button"
+    >
       PDF
     </button>
   </section>
 
-  <main class="dashboard">
+  <main id="appScrollArea" class="dashboard">
     <div id="harnessBadge" class="harness-badge">
       K9MATICS BEREIT
     </div>
@@ -132,3 +166,59 @@
 
       <div id="hudCoords" class="hud-coords">
         X:0 Y:0
+      </div>
+
+      <div id="tiltValue" class="hud-tilt">
+        KIPPUNG: 0°
+      </div>
+    </section>
+
+    <section class="chart-container">
+      <div class="chart-header">
+        <span>LIVE HARNESS MOTION</span>
+
+        <select id="chartMode">
+          <option value="motion">Bewegung</option>
+          <option value="tilt">Kippung</option>
+          <option value="rotation">Rotation</option>
+        </select>
+      </div>
+
+      <canvas id="sensorChart"></canvas>
+    </section>
+
+    <section class="analysis-panel">
+      <div class="analysis-row">
+        <span>VERTIKALE BEWEGUNG</span>
+        <strong id="verticalValue">0.00 g</strong>
+      </div>
+
+      <div class="analysis-row">
+        <span>SEITLICHE BEWEGUNG</span>
+        <strong id="lateralValue">0.00 g</strong>
+      </div>
+
+      <div class="analysis-row">
+        <span>VOR-/ZURÜCKKIPPUNG</span>
+        <strong id="pitchValue">0.0°</strong>
+      </div>
+
+      <div class="analysis-row">
+        <span>ANALYSESTATUS</span>
+        <strong id="analysisStatus">WARTEN</strong>
+      </div>
+    </section>
+
+    <p id="debugRaw">NO DATA</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <script src="analysis.js"></script>
+  <script src="storage.js"></script>
+  <script src="sensor.js"></script>
+  <script src="pdf.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
