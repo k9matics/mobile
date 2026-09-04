@@ -1,29 +1,33 @@
 "use strict";
 
 /*
-  K9MATICS HARNESS v2.5
-  Bluetooth-Anbindung:
+  K9MATICS HARNESS v2.6
 
-  XIAO nRF52840
-  Adafruit Bluefruit
-  BLEUart
-  Nordic UART Service
+  XIAO nRF52840 + Adafruit Bluefruit BLEUart.
+  Nordic UART Service.
 
-  Firmware sendet:
+  Firmwareformat:
   X:0.12 Y:-0.04 Z:1.08
+
+  Die Service-UUID wird als 128-Bit-Array
+  übergeben, weil der Browser im Screenshot
+  die String-Schreibweise abgelehnt hat.
 */
 
 window.K9Sensor = (() => {
-  const CONFIG = {
-    serviceUuid:
-      "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+  const NUS_SERVICE_UUID = new Uint8Array([
+    0x6e, 0x40, 0x00, 0x01,
+    0xb5, 0xa3,
+    0xf3, 0x93,
+    0xe0, 0xa9,
+    0xe5, 0x0e, 0x24, 0xdc, 0xca, 0x9e
+  ]);
 
-    txCharacteristicUuid:
-      "6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
+  const NUS_TX_UUID =
+    "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
-    rxCharacteristicUuid:
-      "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-  };
+  const NUS_RX_UUID =
+    "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
   let device = null;
   let txCharacteristic = null;
@@ -64,15 +68,15 @@ window.K9Sensor = (() => {
   }
 
   function parsePacket(text) {
-    const clean = text.trim();
+    const cleanedText = text.trim();
 
-    const match = clean.match(
+    const match = cleanedText.match(
       /X:\s*(-?\d+(?:\.\d+)?)\s+Y:\s*(-?\d+(?:\.\d+)?)\s+Z:\s*(-?\d+(?:\.\d+)?)/i
     );
 
     if (!match) {
       throw new Error(
-        `UNBEKANNTES PAKET: ${clean}`
+        `UNBEKANNTES PAKET: ${cleanedText}`
       );
     }
 
@@ -85,17 +89,16 @@ window.K9Sensor = (() => {
       gyroY: 0,
       gyroZ: 0,
 
-      raw: clean
+      raw: cleanedText
     };
   }
 
   function handleNotification(event) {
     try {
-      const text = decodeNotification(
-        event.target.value
-      );
+      const notificationText =
+        decodeNotification(event.target.value);
 
-      const lines = text
+      const lines = notificationText
         .split(/\r?\n/)
         .map(line => line.trim())
         .filter(Boolean);
@@ -146,7 +149,7 @@ window.K9Sensor = (() => {
       acceptAllDevices: true,
 
       optionalServices: [
-        CONFIG.serviceUuid
+        NUS_SERVICE_UUID
       ]
     });
 
@@ -166,20 +169,22 @@ window.K9Sensor = (() => {
       `VERBINDE: ${device.name || "K9MATICS"}`
     );
 
-    const server = await device.gatt.connect();
+    const server =
+      await device.gatt.connect();
 
-    const service = await server.getPrimaryService(
-      CONFIG.serviceUuid
-    );
+    const service =
+      await server.getPrimaryService(
+        NUS_SERVICE_UUID
+      );
 
     txCharacteristic =
       await service.getCharacteristic(
-        CONFIG.txCharacteristicUuid
+        NUS_TX_UUID
       );
 
     rxCharacteristic =
       await service.getCharacteristic(
-        CONFIG.rxCharacteristicUuid
+        NUS_RX_UUID
       );
 
     txCharacteristic.addEventListener(
@@ -204,7 +209,7 @@ window.K9Sensor = (() => {
       }
     } catch (error) {
       console.warn(
-        "Notifications konnten nicht sauber beendet werden.",
+        "Notifications konnten nicht beendet werden.",
         error
       );
     }
