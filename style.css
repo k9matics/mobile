@@ -15,26 +15,31 @@
 
 * {
   box-sizing: border-box;
-  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   margin: 0;
-  overflow: hidden;
-  overscroll-behavior-y: auto;
   background: var(--bg);
   color: var(--text);
   font-family: "Share Tech Mono", monospace;
+}
+
+html {
+  overscroll-behavior-y: contain;
 }
 
 body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 100dvh;
   padding: 4px;
+  overflow: hidden;
+
   background-image: radial-gradient(
     circle at top,
     #1a221b 0%,
@@ -56,11 +61,14 @@ header {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+
   min-height: 39px;
   padding: 4px 6px;
+
   background: rgba(13, 17, 23, 0.95);
   border: 1px solid var(--tactical-oliv);
   border-radius: 4px;
+
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
@@ -72,17 +80,20 @@ header {
 h1 {
   margin: 0;
   overflow: hidden;
-  color: #fff;
+
+  color: #ffffff;
   font-family: "Bebas Neue", sans-serif;
   font-size: 1.15rem;
   letter-spacing: 1.5px;
   text-overflow: ellipsis;
-  text-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
   white-space: nowrap;
+
+  text-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
 }
 
 .brand p {
   margin: -2px 0 0;
+
   color: var(--neon-cyan);
   font-size: 0.42rem;
   letter-spacing: 1px;
@@ -90,9 +101,11 @@ h1 {
 
 .version {
   padding: 1px 3px;
+
   color: var(--tactical-red);
   font-size: 0.5em;
   vertical-align: super;
+
   background: rgba(179, 0, 45, 0.2);
   border: 1px solid var(--tactical-red);
   border-radius: 2px;
@@ -102,17 +115,47 @@ h1 {
 .btn-action {
   min-height: 28px;
   padding: 4px 8px;
-  color: #fff;
+
+  color: #ffffff;
   font-size: 0.7rem;
   white-space: nowrap;
+
   border: 1px solid rgba(0, 255, 204, 0.3);
   border-radius: 4px;
+
   transition: 0.2s ease;
 }
 
 .btn:active,
 .btn-action:active {
   transform: scale(0.95);
+}
+
+.btn-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 29px;
+  padding: 2px 6px;
+
+  color: var(--neon-cyan);
+  font-size: 1.15rem;
+  line-height: 1;
+
+  background: #161b22;
+  border-color: var(--border);
+}
+
+.btn-refresh.loading {
+  color: #ffffff;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-connect {
@@ -127,7 +170,7 @@ h1 {
 }
 
 .btn.ready {
-  color: #fff;
+  color: #ffffff;
   background: var(--tactical-oliv-hover);
   border-color: var(--neon-cyan);
 }
@@ -136,12 +179,14 @@ h1 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .setup-panel label {
   display: flex;
   flex-direction: column;
   gap: 2px;
+
   color: var(--muted);
   font-size: 0.55rem;
   text-transform: uppercase;
@@ -152,8 +197,10 @@ h1 {
   width: 100%;
   min-height: 26px;
   padding: 3px 4px;
+
   color: var(--text);
   font-size: 0.65rem;
+
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -168,10 +215,12 @@ h1 {
 
 .btn-measure {
   flex: 1.7;
-  color: #fff;
+
+  color: #ffffff;
   font-family: "Bebas Neue", sans-serif;
   font-size: 0.9rem;
   letter-spacing: 1px;
+
   background: var(--tactical-oliv);
   border-color: var(--tactical-oliv-hover);
 }
@@ -185,19 +234,21 @@ h1 {
 .btn-action {
   flex: 1;
   padding: 4px 2px;
+
   color: var(--muted);
+
   background: var(--card-bg);
   border-color: var(--border);
 }
 
 .btn-action.ready {
-  color: #fff;
+  color: #ffffff;
   background: #1f6beb;
   border-color: #388bfd;
 }
 
 .btn-action.pdf-ready {
-  color: #fff;
+  color: #ffffff;
   background: var(--tactical-oliv-hover);
   border-color: var(--neon-cyan);
 }
@@ -220,21 +271,32 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
   width: 100%;
   min-height: 0;
   flex: 1;
-  overflow: hidden;
+
+  padding-top: 1px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .harness-badge {
   align-self: center;
   flex-shrink: 0;
+
   padding: 3px 12px;
+
   color: var(--neon-yellow);
   font-family: "Bebas Neue", sans-serif;
   font-size: 0.8rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
+
   background: rgba(13, 17, 23, 0.9);
   border: 1px solid var(--hud-border);
   border-radius: 4px;
@@ -250,20 +312,23 @@ h1 {
 .glass-box {
   min-width: 0;
   padding: 4px 2px;
+
   text-align: center;
+
   background: rgba(13, 17, 23, 0.85);
   border: 1px solid var(--border);
   border-radius: 4px;
+
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .kpi-title {
   overflow: hidden;
   margin-bottom: 1px;
+
   color: var(--muted);
   font-size: 0.42rem;
   font-weight: bold;
-  letter-spacing: 0.2px;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -271,33 +336,42 @@ h1 {
 
 .kpi-value {
   overflow: hidden;
+
   color: var(--neon-cyan);
   font-family: "Bebas Neue", sans-serif;
   font-size: 0.95rem;
   letter-spacing: 0.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+
   text-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
 }
 
 #hud-radar-container {
   position: relative;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   width: 100%;
   min-height: 105px;
+
   overflow: hidden;
+
   background: #07090e;
   border: 1px solid var(--neon-cyan);
   border-radius: 6px;
+
   box-shadow: inset 0 0 20px rgba(0, 255, 204, 0.15);
 }
 
 .radar-ring {
   position: absolute;
+
   border: 1px solid rgba(0, 255, 204, 0.3);
   border-radius: 50%;
+
   pointer-events: none;
 }
 
@@ -309,6 +383,7 @@ h1 {
 .radar-ring-small {
   width: 55px;
   height: 55px;
+
   border-color: rgba(0, 255, 204, 0.2);
 }
 
@@ -321,6 +396,7 @@ h1 {
 .crosshair-h {
   width: 100%;
   height: 1px;
+
   background: linear-gradient(
     90deg,
     transparent,
@@ -332,6 +408,7 @@ h1 {
 .crosshair-v {
   width: 1px;
   height: 100%;
+
   background: linear-gradient(
     180deg,
     transparent,
@@ -343,14 +420,18 @@ h1 {
 #radar-dot {
   position: absolute;
   z-index: 3;
+
   width: 12px;
   height: 12px;
+
   background: var(--neon-cyan);
-  border: 2px solid #fff;
+  border: 2px solid #ffffff;
   border-radius: 50%;
+
   box-shadow:
     0 0 12px var(--neon-cyan),
-    0 0 4px #fff;
+    0 0 4px #ffffff;
+
   transition: transform 0.05s linear;
 }
 
@@ -359,6 +440,7 @@ h1 {
 .hud-tilt {
   position: absolute;
   z-index: 4;
+
   color: var(--neon-cyan);
   font-size: 0.48rem;
   letter-spacing: 0.5px;
@@ -384,9 +466,10 @@ h1 {
 .chart-container {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 145px;
+
+  min-height: 190px;
   padding: 4px;
+
   background: rgba(7, 9, 14, 0.9);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -397,7 +480,9 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+
   flex-shrink: 0;
+
   color: var(--neon-cyan);
   font-size: 0.55rem;
 }
@@ -405,13 +490,14 @@ h1 {
 .chart-header select {
   width: auto;
   min-width: 130px;
+
   color: var(--neon-cyan);
   font-size: 0.55rem;
 }
 
 .chart-container canvas {
   width: 100% !important;
-  min-height: 0;
+  min-height: 150px;
   flex: 1;
 }
 
@@ -420,7 +506,9 @@ h1 {
   grid-template-columns: 1fr 1fr;
   gap: 2px 8px;
   flex-shrink: 0;
+
   padding: 4px;
+
   background: rgba(13, 17, 23, 0.8);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -430,6 +518,7 @@ h1 {
   display: flex;
   justify-content: space-between;
   gap: 4px;
+
   color: var(--muted);
   font-size: 0.48rem;
 }
@@ -441,8 +530,11 @@ h1 {
 
 #debugRaw {
   flex-shrink: 0;
-  margin: 0;
+
+  margin: 0 0 8px;
+
   overflow: hidden;
+
   color: rgba(139, 148, 158, 0.8);
   font-family: monospace;
   font-size: 0.48rem;
@@ -456,21 +548,26 @@ h1 {
   top: -52px;
   left: 0;
   z-index: 1000;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   width: 100%;
   height: 48px;
+
   color: var(--neon-cyan);
   font-size: 0.65rem;
   letter-spacing: 0.5px;
+
   background: rgba(13, 17, 23, 0.98);
   border-bottom: 1px solid var(--tactical-oliv);
+
   transform: translateY(0);
   transition: transform 0.15s ease;
 }
 
 #pullRefreshIndicator.ready {
-  color: #fff;
+  color: #ffffff;
   background: var(--tactical-oliv);
 }
