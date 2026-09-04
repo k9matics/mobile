@@ -1,5 +1,10 @@
 "use strict";
 
+/*
+  K9MATICS HARNESS v2.5
+  PDF-Auswertung.
+*/
+
 async function exportToPDF() {
   if (!window.jspdf?.jsPDF) {
     throw new Error(
@@ -68,7 +73,7 @@ async function exportToPDF() {
   );
 
   pdf.text(
-    `Analyse: ${getText("analysisStatus")}`,
+    `Status: ${getText("analysisStatus")}`,
     14,
     64
   );
