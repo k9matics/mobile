@@ -1,16 +1,12 @@
 "use strict";
 
 /*
-  CANINE GAIT HUD
-  Projektversion: v2.3.1
-  Versionsdatum: 04.09.2026
-  Datei: version.js
-
-  Nur hier Version und Datum ändern.
+  HARNELYZER
+  Zentrale Projektversion
 */
 
 window.APP_META = {
-  name: "CANINE GAIT HUD",
-  version: "2.3.1",
+  name: "HARNELYZER",
+  version: "2.3.2",
   date: "04.09.2026"
 };
