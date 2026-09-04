@@ -1,19 +1,5 @@
 "use strict";
 
-/*
-  K9MATICS HARNESS v2.5
-  Technische Bewegungsanalyse eines Geschirrs.
-
-  Ein XIAO-IMU-Sensor misst:
-  - Beschleunigung
-  - Kippung
-  - Bewegungsschwankung
-
-  In der aktuellen Firmware werden nur X/Y/Z-
-  Beschleunigungswerte gesendet. Daher kann
-  keine echte Gyroskop-Rotation berechnet werden.
-*/
-
 const Analysis = (() => {
   const history = [];
   const maxHistory = 300;
@@ -96,11 +82,9 @@ const Analysis = (() => {
       return 0;
     }
 
-    const rolls = samples.map(
-      sample => sample.roll
+    return average(
+      samples.map(sample => sample.roll)
     );
-
-    return average(rolls);
   }
 
   function calculateStability() {
@@ -136,12 +120,12 @@ const Analysis = (() => {
 
   function calculateFitScore() {
     const stability = calculateStability();
-    const shift = Math.abs(calculateShift());
 
-    const deductions = shift * 1.5;
+    const shift =
+      Math.abs(calculateShift());
 
     return clamp(
-      stability - deductions,
+      stability - shift * 1.5,
       0,
       100
     );
@@ -241,17 +225,12 @@ const Analysis = (() => {
     reference = null;
   }
 
-  function getHistory() {
-    return [...history];
-  }
-
   return {
     magnitude,
     calculateTilt,
     addSample,
     calculate,
     setReference,
-    reset,
-    getHistory
+    reset
   };
 })();
