@@ -34,7 +34,168 @@
       <div class="connection-state" aria-live="polite">
         <span id="connectionDot" class="status-dot" aria-hidden="true"></span>
         <div>
-          <span class="micro-lab    <button
+          <span class="micro-label">SENSOR STATUS</span>
+          <strong id="connectionLabel">OFFLINE</strong>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button
+          id="btnRefresh"
+          class="btn btn-refresh"
+          type="button"
+          title="Seite aktualisieren"
+          aria-label="Seite aktualisieren"
+        >
+          ↻
+        </button>
+
+        <button
+          id="btnConnect"
+          class="btn btn-connect"
+          type="button"
+        >
+          SENSOR
+        </button>
+
+        <button
+          id="btnCalib"
+          class="btn btn-calib"
+          type="button"
+        >
+          CALIB
+        </button>
+      </div>
+    </header>
+
+    <section class="setup-panel" aria-label="Messkonfiguration">
+      <label>
+        Hundegröße
+        <select id="dogSize">
+          <option value="toy">Sehr klein</option>
+          <option value="small">Klein</option>
+          <option value="medium" selected>Mittel</option>
+          <option value="large">Groß</option>
+          <option value="giant">Sehr groß</option>
+        </select>
+      </label>
+
+      <label>
+        Sensorposition
+        <select id="sensorPosition">
+          <option value="back" selected>Rückensteg</option>
+          <option value="shoulder">Schulterbereich</option>
+          <option value="chest">Bruststeg</option>
+          <option value="side">Seitlicher Gurt</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="controls" aria-label="Messsteuerung">
+      <button id="btnMeasure" class="btn btn-measure" type="button">
+        ANALYSE STARTEN
+      </button>
+
+      <button id="btnDemo" class="btn-action" type="button">
+        DEMO
+      </button>
+
+      <button id="btnSave" class="btn-action" type="button">
+        CSV
+      </button>
+
+      <button id="btnPdf" class="btn-action" type="button">
+        PDF
+      </button>
+    </section>
+
+    <main class="dashboard">
+      <div id="harnessBadge" class="harness-badge" role="status">
+        K9MATICS BEREIT
+      </div>
+
+      <section class="kpi-container" aria-label="Live-Kennzahlen">
+        <div class="glass-box">
+          <div class="kpi-title">PASSFORM</div>
+          <div id="kpiFit" class="kpi-value">—</div>
+        </div>
+
+        <div class="glass-box">
+          <div class="kpi-title">STABILITÄT</div>
+          <div id="kpiStability" class="kpi-value">0%</div>
+        </div>
+
+        <div class="glass-box">
+          <div class="kpi-title">VERSCHIEBUNG</div>
+          <div id="kpiShift" class="kpi-value">0°</div>
+        </div>
+
+        <div class="glass-box">
+          <div class="kpi-title">ROTATION</div>
+          <div id="kpiRotation" class="kpi-value">N/V</div>
+        </div>
+      </section>
+
+      <section id="hud-radar-container" aria-label="Harness Motion Field">
+        <div class="radar-ring radar-ring-large"></div>
+        <div class="radar-ring radar-ring-small"></div>
+        <div class="crosshair-h"></div>
+        <div class="crosshair-v"></div>
+        <div id="radar-dot" aria-hidden="true"></div>
+        <div class="hud-label">HARNESS MOTION FIELD</div>
+        <div id="hudCoords" class="hud-coords">X:0 Y:0</div>
+        <div id="tiltValue" class="hud-tilt">KIPPUNG: 0°</div>
+      </section>
+
+      <section class="chart-container" aria-label="Live-Harness-Bewegung">
+        <div class="chart-header">
+          <span>LIVE HARNESS MOTION</span>
+
+          <select id="chartMode" aria-label="Diagrammmodus">
+            <option value="motion">Beschleunigung</option>
+            <option value="tilt">Kippung</option>
+          </select>
+        </div>
+
+        <canvas id="sensorChart"></canvas>
+      </section>
+
+      <section class="analysis-panel" aria-label="Bewegungsanalyse">
+        <div class="analysis-row">
+          <span>VERTIKALE BEWEGUNG</span>
+          <strong id="verticalValue">0.00 g</strong>
+        </div>
+
+        <div class="analysis-row">
+          <span>SEITLICHE BEWEGUNG</span>
+          <strong id="lateralValue">0.00 g</strong>
+        </div>
+
+        <div class="analysis-row">
+          <span>VOR-/ZURÜCKKIPPUNG</span>
+          <strong id="pitchValue">0.0°</strong>
+        </div>
+
+        <div class="analysis-row">
+          <span>ANALYSESTATUS</span>
+          <strong id="analysisStatus">WARTEN</strong>
+        </div>
+      </section>
+
+      <p id="debugRaw">NO DATA</p>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <script src="analysis.js?v=2.8"></script>
+  <script src="storage.js?v=2.8"></script>
+  <script src="k9-sensor.js?v=2.8"></script>
+  <script src="pdf.js?v=2.8"></script>
+  <script src="app.js?v=2.8"></script>
+</body>
+</html>          <span class="micro-lab    <button
       id="btnRefresh"
       class="btn btn-refresh"
       type="button"
