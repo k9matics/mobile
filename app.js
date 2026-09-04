@@ -1,164 +1,925 @@
-const btnCalib = document.getElementById("btnCalib");
-const btnCam = document.getElementById("btnCam");
-const btnMeasure = document.getElementById("btnMeasure");
-const btnSave = document.getElementById("btnSave");
-const btnPdf = document.getElementById("btnPdf");
-const camFeed = document.getElementById("camFeed");
-const radarDot = document.getElementById("radar-dot");
-const hudCoords = document.getElementById("hudCoords");
-const debugRaw = document.getElementById("debugRaw");
-const gaitBadge = document.getElementById("gaitBadge");
-const kpiStep = document.getElementById("kpiStep");
-const kpiTrab = document.getElementById("kpiTrab");
-const kpiGalopp = document.getElementById("kpiGalopp");
-const gaitDistribution = document.getElementById("gaitDistribution");
-const segSchritt = document.getElementById("segSchritt");
-const segTrab = document.getElementById("segTrab");
-const segGalopp = document.getElementById("segGalopp");
-const segRuhe = document.getElementById("segRuhe");
+"use strict";
+
+/*
+  K9MATICS HARNESS v2.2
+  Hauptsteuerung der Geschirr-Analyse.
+*/
+
+const APP_VERSION = "2.2";
+
+const el = {
+  btnConnect: document.getElementById("btnConnect"),
+  btnCalib: document.getElementById("btnCalib"),
+  btnMeasure: document.getElementById("btnMeasure"),
+  btnDemo: document.getElementById("btnDemo"),
+  btnSave: document.getElementById("btnSave"),
+  btnPdf: document.getElementById("btnPdf"),
+
+  dogSize: document.getElementById("dogSize"),
+  sensorPosition:
+    document.getElementById("sensorPosition"),
+
+  chartMode: document.getElementById("chartMode"),
+
+  harnessBadge:
+    document.getElementById("harnessBadge"),
+
+  fit: document.getElementById("kpiFit"),
+  stability:
+    document.getElementById("kpiStability"),
+
+  shift: document.getElementById("kpiShift"),
+
+  rotation:
+    document.getElementById("kpiRotation"),
+
+  radarDot: document.getElementById("radar-dot"),
+
+  hudCoords:
+    document.getElementById("hudCoords"),
+
+  tiltValue:
+    document.getElementById("tiltValue"),
+
+  verticalValue:
+    document.getElementById("verticalValue"),
+
+  lateralValue:
+    document.getElementById("lateralValue"),
+
+  pitchValue:
+    document.getElementById("pitchValue"),
+
+  analysisStatus:
+    document.getElementById("analysisStatus"),
+
+  debugRaw:
+    document.getElementById("debugRaw"),
+
+  pullRefreshIndicator:
+    document.getElementById(
+      "pullRefreshIndicator"
+    ),
+
+  pullRefreshText:
+    document.getElementById(
+      "pullRefreshText"
+    )
+};
 
 let measuring = false;
-let camOn = false;
-let calibOn = false;
-let stepCount = 0;
-let trabCount = 0;
-let galoppCount = 0;
+let demoRunning = false;
+let sensorConnected = false;
+let currentRows = [];
 
-const ctx = document.getElementById("gaitChart").getContext("2d");
-const gaitChart = new Chart(ctx, {
-  type: "line",
-  data: {
-    labels: [],
-    datasets: [{
-      label: "Gait",
-      data: [],
-      borderColor: "#00ffcc",
-      backgroundColor: "rgba(0,255,204,0.15)",
-      tension: 0.35,
-      pointRadius: 0,
-      fill: true
-    }]
+const MAX_CHART_POINTS = 120;
+
+const DOG_PROFILES = {
+  toy: {
+    label: "Sehr klein",
+    movementFactor: 1.35
   },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false }
+
+  small: {
+    label: "Klein",
+    movementFactor: 1.15
+  },
+
+  medium: {
+    label: "Mittel",
+    movementFactor: 1
+  },
+
+  large: {
+    label: "Groß",
+    movementFactor: 0.85
+  },
+
+  giant: {
+    label: "Sehr groß",
+    movementFactor: 0.7
+  }
+};
+
+const chart = new Chart(
+  document
+    .getElementById("sensorChart")
+    .getContext("2d"),
+  {
+    type: "line",
+
+    data: {
+      labels: [],
+
+      datasets: [
+        {
+          label: "Seitlich",
+          data: [],
+          borderColor: "#ffcc00",
+          backgroundColor: "transparent",
+          borderWidth: 1,
+          pointRadius: 0,
+          tension: 0.2
+        },
+
+        {
+          label: "Vor/Zurück",
+          data: [],
+          borderColor: "#b3002d",
+          backgroundColor: "transparent",
+          borderWidth: 1,
+          pointRadius: 0,
+          tension: 0.2
+        },
+
+        {
+          label: "Vertikal",
+          data: [],
+          borderColor: "#00ffcc",
+          backgroundColor:
+            "rgba(0,255,204,0.08)",
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.2,
+          fill: true
+        },
+
+        {
+          label: "Gesamt",
+          data: [],
+          borderColor: "#ffffff",
+          backgroundColor: "transparent",
+          borderWidth: 1,
+          pointRadius: 0,
+          tension: 0.2
+        }
+      ]
     },
-    scales: {
-      x: { display: false },
-      y: {
-        display: false,
-        suggestedMin: 0,
-        suggestedMax: 100
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      normalized: true,
+
+      interaction: {
+        intersect: false,
+        mode: "index"
+      },
+
+      plugins: {
+        legend: {
+          display: true,
+
+          labels: {
+            color: "#c9d1d9",
+
+            font: {
+              family: "Share Tech Mono",
+              size: 8
+            },
+
+            boxWidth: 8,
+            padding: 6
+          }
+        }
+      },
+
+      scales: {
+        x: {
+          ticks: {
+            color: "#8b949e",
+            maxTicksLimit: 5,
+
+            font: {
+              family: "Share Tech Mono",
+              size: 8
+            }
+          },
+
+          grid: {
+            color:
+              "rgba(139,148,158,0.15)"
+          },
+
+          title: {
+            display: true,
+            text: "Zeit",
+            color: "#00ffcc"
+          }
+        },
+
+        y: {
+          min: -2,
+          max: 2,
+
+          ticks: {
+            color: "#8b949e",
+
+            font: {
+              family: "Share Tech Mono",
+              size: 8
+            }
+          },
+
+          grid: {
+            color:
+              "rgba(139,148,158,0.15)"
+          },
+
+          title: {
+            display: true,
+            text: "Bewegung",
+            color: "#00ffcc"
+          }
+        }
       }
     }
   }
-});
+);
 
 function setStatus(text) {
-  gaitBadge.textContent = text;
-  debugRaw.textContent = text;
+  el.harnessBadge.textContent = text;
+  el.debugRaw.textContent = text;
 }
 
-function updateCounts() {
-  kpiStep.textContent = stepCount;
-  kpiTrab.textContent = trabCount;
-  kpiGalopp.textContent = galoppCount;
-}
-
-function randomGaitValue() {
-  return Math.floor(Math.random() * 100);
-}
-
-function addChartPoint(value) {
-  const labels = gaitChart.data.labels;
-  const data = gaitChart.data.datasets[0].data;
-  labels.push("");
-  data.push(value);
-  if (labels.length > 30) {
-    labels.shift();
-    data.shift();
+function updateStatusColor(text) {
+  if (
+    text.includes("EMPFOHLEN") ||
+    text.includes("ABWEICHUNG") ||
+    text.includes("FEHLER")
+  ) {
+    el.harnessBadge.style.color = "#ff0055";
+    el.analysisStatus.style.color = "#ff0055";
+    return;
   }
-  gaitChart.update();
+
+  if (
+    text.includes("VERSCHIEBUNG") ||
+    text.includes("ROTATION") ||
+    text.includes("UNRUHIG") ||
+    text.includes("WENIG") ||
+    text.includes("WARTEN")
+  ) {
+    el.harnessBadge.style.color = "#ffcc00";
+    el.analysisStatus.style.color = "#ffcc00";
+    return;
+  }
+
+  el.harnessBadge.style.color = "#00ffcc";
+  el.analysisStatus.style.color = "#00ffcc";
 }
 
-function updateRadar(x, y) {
-  radarDot.style.transform = `translate(${x}px, ${y}px)`;
-  hudCoords.textContent = `X:${Math.round(x)} Y:${Math.round(y)}`;
+function resetChart() {
+  chart.data.labels = [];
+
+  chart.data.datasets.forEach(dataset => {
+    dataset.data = [];
+  });
+
+  chart.update("none");
 }
 
-btnCalib.addEventListener("click", () => {
-  calibOn = !calibOn;
-  btnCalib.textContent = calibOn ? "CALIB ON" : "CALIB";
-  setStatus(calibOn ? "CALIBRATION" : "READY");
-});
+function updateRadar(shift, pitch) {
+  const x =
+    Math.max(-45, Math.min(45, shift)) *
+    1.2;
 
-btnCam.addEventListener("click", async () => {
-  camOn = !camOn;
-  if (camOn) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      camFeed.srcObject = stream;
-      camFeed.style.display = "block";
-      btnCam.textContent = "CAM ON";
-      setStatus("CAM ACTIVE");
-    } catch (err) {
-      camOn = false;
-      btnCam.textContent = "CAM";
-      setStatus("CAM ERROR");
-    }
+  const y =
+    Math.max(-45, Math.min(45, pitch)) *
+    0.8;
+
+  el.radarDot.style.transform =
+    `translate(${x}px, ${y}px)`;
+
+  el.hudCoords.textContent =
+    `X:${x.toFixed(0)} Y:${y.toFixed(0)}`;
+
+  el.tiltValue.textContent =
+    `KIPPUNG: ${shift.toFixed(1)}°`;
+}
+
+function normalizeSensorData(data) {
+  return {
+    timestamp:
+      Number(data.timestamp) || Date.now(),
+
+    accX: Number(data.accX) || 0,
+    accY: Number(data.accY) || 0,
+    accZ: Number(data.accZ) || 0,
+
+    gyroX: Number(data.gyroX) || 0,
+    gyroY: Number(data.gyroY) || 0,
+    gyroZ: Number(data.gyroZ) || 0,
+
+    raw: data.raw ?? ""
+  };
+}
+
+function updateData(inputData) {
+  const data =
+    normalizeSensorData(inputData);
+
+  const totalAcceleration =
+    Analysis.magnitude(
+      data.accX,
+      data.accY,
+      data.accZ
+    );
+
+  const tilt =
+    Analysis.calculateTilt(
+      data.accX,
+      data.accY,
+      data.accZ
+    );
+
+  /*
+    Erwartet Beschleunigung ungefähr in g:
+    Erdbeschleunigung im Ruhezustand ≈ 1.
+  */
+  const dynamicAcceleration =
+    Math.abs(totalAcceleration - 1);
+
+  const sample = {
+    ...data,
+    totalAcceleration,
+    dynamicAcceleration,
+    roll: tilt.roll,
+    pitch: tilt.pitch
+  };
+
+  const result =
+    Analysis.addSample(sample);
+
+  currentRows.push(sample);
+
+  if (data.raw !== "") {
+    el.debugRaw.textContent =
+      `RAW: ${data.raw}`;
   } else {
-    const stream = camFeed.srcObject;
-    if (stream) stream.getTracks().forEach(track => track.stop());
-    camFeed.srcObject = null;
-    camFeed.style.display = "none";
-    btnCam.textContent = "CAM";
-    setStatus("READY");
+    el.debugRaw.textContent =
+      `X:${data.accX.toFixed(2)} ` +
+      `Y:${data.accY.toFixed(2)} ` +
+      `Z:${data.accZ.toFixed(2)}`;
   }
-});
 
-btnMeasure.addEventListener("click", () => {
-  measuring = !measuring;
-  btnMeasure.classList.toggle("active", measuring);
-  btnMeasure.classList.toggle("review", !measuring && stepCount > 0);
-  btnMeasure.textContent = measuring ? "MESSUNG" : "MESSEN";
-  gaitDistribution.classList.toggle("show", !measuring && stepCount > 0);
-  setStatus(measuring ? "MEASURING" : "READY");
-});
+  const time =
+    new Date(data.timestamp)
+      .toLocaleTimeString(
+        "de-DE",
+        {
+          minute: "2-digit",
+          second: "2-digit"
+        }
+      );
 
-btnSave.addEventListener("click", () => {
-  btnSave.classList.add("ready");
-  setTimeout(() => btnSave.classList.remove("ready"), 800);
-  setStatus("SAVED");
-});
+  chart.data.labels.push(time);
 
-btnPdf.addEventListener("click", () => {
-  btnPdf.classList.add("pdf-ready");
-  setTimeout(() => btnPdf.classList.remove("pdf-ready"), 800);
-  setStatus("PDF READY");
-});
+  chart.data.datasets[0].data.push(
+    data.accY
+  );
 
-setInterval(() => {
-  if (!measuring) return;
+  chart.data.datasets[1].data.push(
+    data.accX
+  );
 
-  const value = randomGaitValue();
-  addChartPoint(value);
-  updateRadar((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60);
+  chart.data.datasets[2].data.push(
+    data.accZ
+  );
 
-  stepCount += Math.random() > 0.5 ? 1 : 0;
-  trabCount += value > 35 && value <= 70 ? 1 : 0;
-  galoppCount += value > 70 ? 1 : 0;
+  chart.data.datasets[3].data.push(
+    totalAcceleration
+  );
 
-  const total = Math.max(stepCount + trabCount + galoppCount + 10, 1);
-  segSchritt.style.width = `${(stepCount / total) * 100}%`;
-  segTrab.style.width = `${(trabCount / total) * 100}%`;
-  segGalopp.style.width = `${(galoppCount / total) * 100}%`;
-  segRuhe.style.width = `${Math.max(0, 100 - ((stepCount + trabCount + galoppCount) / total) * 100)}%`;
+  if (
+    chart.data.labels.length >
+    MAX_CHART_POINTS
+  ) {
+    chart.data.labels.shift();
 
-  updateCounts();
-  setStatus("MEASURING");
-}, 500);
+    chart.data.datasets.forEach(dataset => {
+      dataset.data.shift();
+    });
+  }
 
-updateCounts();
-setStatus("READY")
+  chart.update("none");
+
+  el.fit.textContent =
+    result.fitLabel;
+
+  el.stability.textContent =
+    `${result.stability.toFixed(0)}%`;
+
+  el.shift.textContent =
+    `${result.shift.toFixed(1)}°`;
+
+  el.rotation.textContent =
+    `${result.rotation.toFixed(1)}°`;
+
+  el.verticalValue.textContent =
+    `${Math.abs(data.accZ).toFixed(2)} g`;
+
+  el.lateralValue.textContent =
+    `${Math.abs(data.accY).toFixed(2)} g`;
+
+  el.pitchValue.textContent =
+    `${tilt.pitch.toFixed(1)}°`;
+
+  el.analysisStatus.textContent =
+    result.status;
+
+  updateRadar(
+    result.shift,
+    tilt.pitch
+  );
+
+  updateStatusColor(result.status);
+}
+
+function startMeasurement() {
+  measuring = true;
+  currentRows = [];
+
+  Analysis.reset();
+  resetChart();
+
+  el.btnMeasure.classList.add("active");
+
+  el.btnMeasure.textContent =
+    "ANALYSE LÄUFT";
+
+  setStatus("GESCHIRRANALYSE AKTIV");
+}
+
+function stopMeasurement() {
+  measuring = false;
+
+  el.btnMeasure.classList.remove("active");
+
+  el.btnMeasure.textContent =
+    "ANALYSE STARTEN";
+
+  setStatus("ANALYSE BEENDET");
+}
+
+function createDemoData() {
+  const time =
+    Date.now() / 200;
+
+  const profile =
+    DOG_PROFILES[el.dogSize.value] ||
+    DOG_PROFILES.medium;
+
+  const factor =
+    profile.movementFactor;
+
+  return {
+    timestamp: Date.now(),
+
+    accX:
+      Math.sin(time * 0.8) *
+      0.22 *
+      factor,
+
+    accY:
+      Math.cos(time * 0.75) *
+      0.15 *
+      factor,
+
+    accZ:
+      1 +
+      Math.sin(time * 1.8) *
+      0.3 *
+      factor,
+
+    gyroX:
+      Math.sin(time * 0.7) * 2,
+
+    gyroY:
+      Math.cos(time * 0.6) * 2,
+
+    gyroZ:
+      Math.sin(time * 1.1) * 4,
+
+    raw: "DEMO"
+  };
+}
+
+function demoLoop() {
+  if (!demoRunning) {
+    return;
+  }
+
+  if (!measuring) {
+    startMeasurement();
+  }
+
+  updateData(createDemoData());
+
+  setTimeout(() => {
+    requestAnimationFrame(demoLoop);
+  }, 80);
+}
+
+async function connectSensor() {
+  try {
+    setStatus("SENSOR AUSWÄHLEN");
+
+    await Sensor.connect();
+
+    sensorConnected = true;
+
+    el.btnConnect.textContent =
+      "VERBUNDEN";
+
+    el.btnConnect.classList.add("ready");
+
+    setStatus("K9MATICS SENSOR VERBUNDEN");
+  } catch (error) {
+    sensorConnected = false;
+
+    console.error(
+      "K9MATICS Sensorfehler:",
+      error
+    );
+
+    setStatus(
+      `FEHLER: ${error.message}`
+    );
+
+    alert(error.message);
+  }
+}
+
+async function disconnectSensor() {
+  try {
+    await Sensor.disconnect();
+
+    sensorConnected = false;
+
+    el.btnConnect.textContent =
+      "SENSOR";
+
+    el.btnConnect.classList.remove("ready");
+
+    setStatus("SENSOR GETRENNT");
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function calibrateHarness() {
+  if (!currentRows.length) {
+    setStatus("NOCH KEINE DATEN");
+    return;
+  }
+
+  const reference =
+    Analysis.setReference();
+
+  el.btnCalib.textContent =
+    "CALIB OK";
+
+  el.btnCalib.classList.add("ready");
+
+  setStatus(
+    `REFERENZ GESPEICHERT: ` +
+    `${reference.fitScore.toFixed(0)}%`
+  );
+}
+
+function saveCsv() {
+  if (!currentRows.length) {
+    alert("KEINE MESSDATEN VORHANDEN");
+    return;
+  }
+
+  Storage.save({
+    timestamp: Date.now(),
+    version: APP_VERSION,
+    dogSize: el.dogSize.value,
+    sensorPosition: el.sensorPosition.value,
+    rows: currentRows
+  });
+
+  Storage.exportCsv(currentRows);
+
+  el.btnSave.classList.add("ready");
+
+  setTimeout(() => {
+    el.btnSave.classList.remove("ready");
+  }, 900);
+
+  setStatus("CSV GESPEICHERT");
+}
+
+async function savePdf() {
+  try {
+    await exportToPDF();
+
+    el.btnPdf.classList.add("pdf-ready");
+
+    setTimeout(() => {
+      el.btnPdf.classList.remove("pdf-ready");
+    }, 900);
+
+    setStatus("PDF GESPEICHERT");
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+function changeChartMode(mode) {
+  const datasets =
+    chart.data.datasets;
+
+  if (mode === "motion") {
+    datasets[0].hidden = false;
+    datasets[1].hidden = false;
+    datasets[2].hidden = false;
+    datasets[3].hidden = false;
+
+    chart.options.scales.y.title.text =
+      "Bewegung";
+  }
+
+  if (mode === "tilt") {
+    datasets[0].hidden = true;
+    datasets[1].hidden = true;
+    datasets[2].hidden = true;
+    datasets[3].hidden = true;
+
+    chart.options.scales.y.title.text =
+      "Kippung";
+  }
+
+  if (mode === "rotation") {
+    datasets[0].hidden = true;
+    datasets[1].hidden = true;
+    datasets[2].hidden = true;
+    datasets[3].hidden = true;
+
+    chart.options.scales.y.title.text =
+      "Rotation";
+  }
+
+  chart.update("none");
+}
+
+/*
+  Pull-to-refresh
+*/
+const PULL_THRESHOLD = 75;
+
+let touchStartY = 0;
+let touchCurrentY = 0;
+let pulling = false;
+let refreshInProgress = false;
+
+function isAtTop() {
+  return window.scrollY <= 0;
+}
+
+function resetPullIndicator() {
+  el.pullRefreshIndicator.style.transform =
+    "translateY(0)";
+
+  el.pullRefreshIndicator.classList.remove(
+    "ready"
+  );
+
+  el.pullRefreshText.textContent =
+    "ZUM AKTUALISIEREN ZIEHEN";
+}
+
+function updatePullIndicator(distance) {
+  const visibleDistance =
+    Math.min(distance * 0.65, 90);
+
+  el.pullRefreshIndicator.style.transform =
+    `translateY(${visibleDistance}px)`;
+
+  if (distance >= PULL_THRESHOLD) {
+    el.pullRefreshIndicator.classList.add(
+      "ready"
+    );
+
+    el.pullRefreshText.textContent =
+      "LOS LASSEN ZUM AKTUALISIEREN";
+  } else {
+    el.pullRefreshIndicator.classList.remove(
+      "ready"
+    );
+
+    el.pullRefreshText.textContent =
+      "ZUM AKTUALISIEREN ZIEHEN";
+  }
+}
+
+function handleTouchStart(event) {
+  if (
+    refreshInProgress ||
+    !isAtTop() ||
+    !event.touches?.length
+  ) {
+    return;
+  }
+
+  touchStartY =
+    event.touches[0].clientY;
+
+  touchCurrentY =
+    touchStartY;
+
+  pulling = true;
+}
+
+function handleTouchMove(event) {
+  if (
+    !pulling ||
+    refreshInProgress ||
+    !event.touches?.length
+  ) {
+    return;
+  }
+
+  touchCurrentY =
+    event.touches[0].clientY;
+
+  const distance =
+    touchCurrentY - touchStartY;
+
+  if (distance <= 0) {
+    resetPullIndicator();
+    return;
+  }
+
+  if (!isAtTop()) {
+    pulling = false;
+    resetPullIndicator();
+    return;
+  }
+
+  if (distance > 8) {
+    event.preventDefault();
+  }
+
+  updatePullIndicator(distance);
+}
+
+function handleTouchEnd() {
+  if (
+    !pulling ||
+    refreshInProgress
+  ) {
+    return;
+  }
+
+  const distance =
+    touchCurrentY - touchStartY;
+
+  pulling = false;
+
+  if (distance >= PULL_THRESHOLD) {
+    refreshPage();
+  } else {
+    resetPullIndicator();
+  }
+}
+
+function refreshPage() {
+  refreshInProgress = true;
+
+  el.pullRefreshIndicator.classList.add(
+    "ready"
+  );
+
+  el.pullRefreshText.textContent =
+    "AKTUALISIERE...";
+
+  setTimeout(() => {
+    window.location.reload();
+  }, 250);
+}
+
+document.addEventListener(
+  "touchstart",
+  handleTouchStart,
+  {
+    passive: true
+  }
+);
+
+document.addEventListener(
+  "touchmove",
+  handleTouchMove,
+  {
+    passive: false
+  }
+);
+
+document.addEventListener(
+  "touchend",
+  handleTouchEnd,
+  {
+    passive: true
+  }
+);
+
+el.btnConnect.addEventListener(
+  "click",
+  async () => {
+    if (sensorConnected) {
+      await disconnectSensor();
+    } else {
+      await connectSensor();
+    }
+  }
+);
+
+el.btnCalib.addEventListener(
+  "click",
+  calibrateHarness
+);
+
+el.btnMeasure.addEventListener(
+  "click",
+  () => {
+    if (measuring) {
+      stopMeasurement();
+    } else {
+      startMeasurement();
+    }
+  }
+);
+
+el.btnDemo.addEventListener(
+  "click",
+  () => {
+    demoRunning = !demoRunning;
+
+    if (demoRunning) {
+      el.btnDemo.textContent =
+        "DEMO STOP";
+
+      setStatus("DEMO AKTIV");
+      demoLoop();
+    } else {
+      el.btnDemo.textContent =
+        "DEMO";
+
+      setStatus("DEMO BEENDET");
+    }
+  }
+);
+
+el.btnSave.addEventListener(
+  "click",
+  saveCsv
+);
+
+el.btnPdf.addEventListener(
+  "click",
+  savePdf
+);
+
+el.chartMode.addEventListener(
+  "change",
+  event => {
+    changeChartMode(
+      event.target.value
+    );
+  }
+);
+
+Sensor.on(
+  "status",
+  sensorStatus => {
+    setStatus(sensorStatus);
+  }
+);
+
+Sensor.on(
+  "error",
+  sensorError => {
+    setStatus(sensorError);
+  }
+);
+
+Sensor.on(
+  "data",
+  data => {
+    el.debugRaw.textContent =
+      `RAW: ${data.raw ?? "OK"}`;
+
+    if (measuring) {
+      updateData(data);
+    }
+  }
+);
+
+setStatus(
+  `K9MATICS BEREIT · v${APP_VERSION}`
+);
