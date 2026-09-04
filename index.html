@@ -10,7 +10,7 @@
 
   <meta name="theme-color" content="#050709">
 
-  <title>K9MATICS HARNESS v2.5</title>
+  <title>K9MATICS HARNESS v2.6</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,21 +20,15 @@
     rel="stylesheet"
   >
 
-  <link rel="stylesheet" href="style.css?v=2.5">
+  <link rel="stylesheet" href="style.css?v=2.6">
 </head>
 
 <body>
-  <div id="pullRefreshIndicator" aria-live="polite">
-    <span id="pullRefreshText">
-      ZUM AKTUALISIEREN ZIEHEN
-    </span>
-  </div>
-
   <header>
     <div class="brand">
       <h1>
         K9MATICS
-        <span class="version">v2.5</span>
+        <span class="version">v2.6</span>
       </h1>
 
       <p>HARNESS ANALYSIS</p>
@@ -137,50 +131,30 @@
     </button>
   </section>
 
-  <main id="appScrollArea" class="dashboard">
+  <main class="dashboard">
     <div id="harnessBadge" class="harness-badge">
       K9MATICS BEREIT
     </div>
 
     <section class="kpi-container">
       <div class="glass-box">
-        <div class="kpi-title">
-          PASSFORM
-        </div>
-
-        <div id="kpiFit" class="kpi-value">
-          —
-        </div>
+        <div class="kpi-title">PASSFORM</div>
+        <div id="kpiFit" class="kpi-value">—</div>
       </div>
 
       <div class="glass-box">
-        <div class="kpi-title">
-          STABILITÄT
-        </div>
-
-        <div id="kpiStability" class="kpi-value">
-          0%
-        </div>
+        <div class="kpi-title">STABILITÄT</div>
+        <div id="kpiStability" class="kpi-value">0%</div>
       </div>
 
       <div class="glass-box">
-        <div class="kpi-title">
-          VERSCHIEBUNG
-        </div>
-
-        <div id="kpiShift" class="kpi-value">
-          0°
-        </div>
+        <div class="kpi-title">VERSCHIEBUNG</div>
+        <div id="kpiShift" class="kpi-value">0°</div>
       </div>
 
       <div class="glass-box">
-        <div class="kpi-title">
-          ROTATION
-        </div>
-
-        <div id="kpiRotation" class="kpi-value">
-          —
-        </div>
+        <div class="kpi-title">ROTATION</div>
+        <div id="kpiRotation" class="kpi-value">N/V</div>
       </div>
     </section>
 
@@ -227,46 +201,36 @@
     <section class="analysis-panel">
       <div class="analysis-row">
         <span>VERTIKALE BEWEGUNG</span>
-        <strong id="verticalValue">
-          0.00 g
-        </strong>
+        <strong id="verticalValue">0.00 g</strong>
       </div>
 
       <div class="analysis-row">
         <span>SEITLICHE BEWEGUNG</span>
-        <strong id="lateralValue">
-          0.00 g
-        </strong>
+        <strong id="lateralValue">0.00 g</strong>
       </div>
 
       <div class="analysis-row">
         <span>VOR-/ZURÜCKKIPPUNG</span>
-        <strong id="pitchValue">
-          0.0°
-        </strong>
+        <strong id="pitchValue">0.0°</strong>
       </div>
 
       <div class="analysis-row">
         <span>ANALYSESTATUS</span>
-        <strong id="analysisStatus">
-          WARTEN
-        </strong>
+        <strong id="analysisStatus">WARTEN</strong>
       </div>
     </section>
 
-    <p id="debugRaw">
-      NO DATA
-    </p>
+    <p id="debugRaw">NO DATA</p>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
-  <script src="analysis.js?v=2.5"></script>
-  <script src="storage.js?v=2.5"></script>
-  <script src="k9-sensor.js?v=2.5"></script>
-  <script src="pdf.js?v=2.5"></script>
-  <script src="app.js?v=2.5"></script>
+  <script src="analysis.js?v=2.6"></script>
+  <script src="storage.js?v=2.6"></script>
+  <script src="k9-sensor.js?v=2.6"></script>
+  <script src="pdf.js?v=2.6"></script>
+  <script src="app.js?v=2.6"></script>
 </body>
 </html>
