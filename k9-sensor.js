@@ -1,33 +1,33 @@
 "use strict";
 
 /*
-  K9MATICS HARNESS v2.6
+  K9MATICS HARNESS v2.6.2
 
-  XIAO nRF52840 + Adafruit Bluefruit BLEUart.
-  Nordic UART Service.
+  XIAO nRF52840
+  Adafruit Bluefruit BLEUart
+  Nordic UART Service
 
-  Firmwareformat:
+  Firmware-Datenformat:
   X:0.12 Y:-0.04 Z:1.08
 
-  Die Service-UUID wird als 128-Bit-Array
-  übergeben, weil der Browser im Screenshot
-  die String-Schreibweise abgelehnt hat.
+  WICHTIG:
+  Alle UUIDs sind Strings in Kleinbuchstaben.
+  Kein Uint8Array verwenden.
 */
 
 window.K9Sensor = (() => {
-  const NUS_SERVICE_UUID = new Uint8Array([
-    0x6e, 0x40, 0x00, 0x01,
-    0xb5, 0xa3,
-    0xf3, 0x93,
-    0xe0, 0xa9,
-    0xe5, 0x0e, 0x24, 0xdc, 0xca, 0x9e
-  ]);
+  const CONFIG = {
+    deviceName: "K9matics",
 
-  const NUS_TX_UUID =
-    "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+    serviceUuid:
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
 
-  const NUS_RX_UUID =
-    "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    txCharacteristicUuid:
+      "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+
+    rxCharacteristicUuid:
+      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+  };
 
   let device = null;
   let txCharacteristic = null;
@@ -76,7 +76,7 @@ window.K9Sensor = (() => {
 
     if (!match) {
       throw new Error(
-        `UNBEKANNTES PAKET: ${cleanedText}`
+        `UNBEKANNTES SENSORPAKET: ${cleanedText}`
       );
     }
 
@@ -95,10 +95,11 @@ window.K9Sensor = (() => {
 
   function handleNotification(event) {
     try {
-      const notificationText =
-        decodeNotification(event.target.value);
+      const receivedText = decodeNotification(
+        event.target.value
+      );
 
-      const lines = notificationText
+      const lines = receivedText
         .split(/\r?\n/)
         .map(line => line.trim())
         .filter(Boolean);
@@ -149,7 +150,7 @@ window.K9Sensor = (() => {
       acceptAllDevices: true,
 
       optionalServices: [
-        NUS_SERVICE_UUID
+        CONFIG.serviceUuid
       ]
     });
 
@@ -166,25 +167,23 @@ window.K9Sensor = (() => {
 
     emit(
       "status",
-      `VERBINDE: ${device.name || "K9MATICS"}`
+      `VERBINDE: ${device.name || CONFIG.deviceName}`
     );
 
-    const server =
-      await device.gatt.connect();
+    const server = await device.gatt.connect();
 
-    const service =
-      await server.getPrimaryService(
-        NUS_SERVICE_UUID
-      );
+    const service = await server.getPrimaryService(
+      CONFIG.serviceUuid
+    );
 
     txCharacteristic =
       await service.getCharacteristic(
-        NUS_TX_UUID
+        CONFIG.txCharacteristicUuid
       );
 
     rxCharacteristic =
       await service.getCharacteristic(
-        NUS_RX_UUID
+        CONFIG.rxCharacteristicUuid
       );
 
     txCharacteristic.addEventListener(
@@ -198,7 +197,7 @@ window.K9Sensor = (() => {
 
     emit(
       "status",
-      `VERBUNDEN: ${device.name || "K9MATICS"}`
+      `VERBUNDEN: ${device.name || CONFIG.deviceName}`
     );
   }
 
