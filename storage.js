@@ -1,77 +1,46 @@
 "use strict";
 
 /*
-  CANINE GAIT HUD
-  storage.js
-  Version 2.2
-
-  Speichert Messungen lokal im Browser
-  und exportiert Rohdaten als CSV.
+  HARNELYZER
+  Lokale Speicherung und CSV-Export
 */
 
 const Storage = (() => {
   const STORAGE_KEY =
-    "canine-gait-hud-measurements-v2";
+    "harnelyzer-measurements";
 
   function load() {
     try {
-      const raw = localStorage.getItem(
-        STORAGE_KEY
+      return JSON.parse(
+        localStorage.getItem(STORAGE_KEY) ||
+        "[]"
       );
-
-      if (!raw) {
-        return [];
-      }
-
-      return JSON.parse(raw);
     } catch (error) {
-      console.warn(
-        "Lokale Messdaten konnten nicht geladen werden.",
-        error
-      );
-
       return [];
     }
   }
 
   function save(measurement) {
-    try {
-      const measurements = load();
+    const measurements = load();
 
-      measurements.push(measurement);
+    measurements.push(measurement);
 
-      /*
-        Nur die letzten 25 Messungen lokal behalten.
-      */
-      const recentMeasurements =
-        measurements.slice(-25);
-
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(recentMeasurements)
-      );
-
-      return true;
-    } catch (error) {
-      console.warn(
-        "Messung konnte nicht gespeichert werden.",
-        error
-      );
-
-      return false;
-    }
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(
+        measurements.slice(-20)
+      )
+    );
   }
 
-  function clear() {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-
-  function numberForCsv(value) {
+  function csvValue(value) {
     if (
       typeof value === "number" &&
       Number.isFinite(value)
     ) {
-      return value.toFixed(5).replace(".", ",");
+      return value
+        .toFixed(4)
+        .replace(".", ",");
     }
 
     return String(value ?? "")
@@ -80,15 +49,12 @@ const Storage = (() => {
   }
 
   function exportCsv(rows) {
-    if (!Array.isArray(rows) || !rows.length) {
-      throw new Error(
-        "KEINE MESSDATEN FÜR CSV VORHANDEN"
-      );
+    if (!rows || !rows.length) {
+      throw new Error("KEINE DATEN");
     }
 
-    const headers = [
+    const header = [
       "timestamp",
-      "datetime",
       "accX",
       "accY",
       "accZ",
@@ -102,43 +68,31 @@ const Storage = (() => {
       "raw"
     ];
 
-    const csvLines = [];
-
-    csvLines.push(headers.join(";"));
+    const lines = [header.join(";")];
 
     rows.forEach(row => {
-      const date = new Date(
-        row.timestamp
-      ).toLocaleString("de-DE");
-
-      const values = [
-        row.timestamp,
-        date,
-        row.accX,
-        row.accY,
-        row.accZ,
-        row.gyroX,
-        row.gyroY,
-        row.gyroZ,
-        row.totalAcceleration,
-        row.dynamicAcceleration,
-        row.roll,
-        row.pitch,
-        row.raw
-      ];
-
-      csvLines.push(
-        values
-          .map(numberForCsv)
+      lines.push(
+        [
+          row.timestamp,
+          row.accX,
+          row.accY,
+          row.accZ,
+          row.gyroX,
+          row.gyroY,
+          row.gyroZ,
+          row.totalAcceleration,
+          row.dynamicAcceleration,
+          row.roll,
+          row.pitch,
+          row.raw
+        ]
+          .map(csvValue)
           .join(";")
       );
     });
 
-    const csvContent =
-      "\uFEFF" + csvLines.join("\n");
-
     const blob = new Blob(
-      [csvContent],
+      ["\uFEFF" + lines.join("\n")],
       {
         type: "text/csv;charset=utf-8"
       }
@@ -149,15 +103,12 @@ const Storage = (() => {
     const link = document.createElement("a");
 
     link.href = url;
-
     link.download =
-      `canine-gait-${Date.now()}.csv`;
+      `harnelyzer-${Date.now()}.csv`;
 
     document.body.appendChild(link);
-
     link.click();
-
-    document.body.removeChild(link);
+    link.remove();
 
     setTimeout(() => {
       URL.revokeObjectURL(url);
@@ -165,9 +116,8 @@ const Storage = (() => {
   }
 
   return {
-    load,
     save,
-    clear,
+    load,
     exportCsv
   };
 })();
