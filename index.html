@@ -1,71 +1,134 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Gait HUD</title>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1"
+  >
+
+  <meta name="theme-color" content="#050709">
+
+  <title>K9MATICS HARNESS v2.2</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <div id="pullRefreshIndicator">Zum Aktualisieren ziehen</div>
-
-  <header>
-    <h1>GAIT HUD <span class="version">v1</span></h1>
-    <button class="btn btn-calib" id="btnCalib">CALIB</button>
-    <button class="btn btn-cam" id="btnCam">CAM</button>
-  </header>
-
-  <div class="controls">
-    <button class="btn btn-measure" id="btnMeasure">MESSEN</button>
-    <button class="btn-action" id="btnSave">SAVE</button>
-    <button class="btn-action" id="btnPdf">PDF</button>
+  <div id="pullRefreshIndicator">
+    <span id="pullRefreshText">ZUM AKTUALISIEREN ZIEHEN</span>
   </div>
 
-  <main class="dashboard">
-    <div class="gait-badge" id="gaitBadge">STATUS</div>
+  <header>
+    <div class="brand">
+      <h1>
+        K9MATICS
+        <span class="version">v2.2</span>
+      </h1>
 
-    <div class="kpi-container">
-      <div class="glass-box">
-        <div class="kpi-title">SCHRITT</div>
-        <div class="kpi-value" id="kpiStep">0</div>
-      </div>
-      <div class="glass-box">
-        <div class="kpi-title">TRAB</div>
-        <div class="kpi-value" id="kpiTrab">0</div>
-      </div>
-      <div class="glass-box">
-        <div class="kpi-title">GALOPP</div>
-        <div class="kpi-value" id="kpiGalopp">0</div>
-      </div>
+      <p>HARNESS ANALYSIS</p>
     </div>
 
-    <section id="hud-radar-container">
-      <video id="camFeed" autoplay playsinline muted></video>
-      <div class="radar-ring"></div>
-      <div class="crosshair-h"></div>
-      <div class="crosshair-v"></div>
-      <div id="radar-dot"></div>
-      <div class="hud-label">HUD ACTIVE</div>
-      <div class="hud-coords" id="hudCoords">X:0 Y:0</div>
-    </section>
+    <button id="btnConnect" class="btn btn-connect">
+      SENSOR
+    </button>
 
-    <p id="debugRaw">READY</p>
+    <button id="btnCalib" class="btn btn-calib">
+      CALIB
+    </button>
+  </header>
 
-    <section class="chart-container">
-      <canvas id="gaitChart"></canvas>
-      <div class="gait-distribution" id="gaitDistribution">
-        <div class="gait-segment gait-schritt" id="segSchritt"></div>
-        <div class="gait-segment gait-trab" id="segTrab"></div>
-        <div class="gait-segment gait-galopp" id="segGalopp"></div>
-        <div class="gait-segment gait-ruhe" id="segRuhe"></div>
+  <section class="setup-panel">
+    <label>
+      Hundegröße
+
+      <select id="dogSize">
+        <option value="toy">Sehr klein</option>
+        <option value="small">Klein</option>
+        <option value="medium" selected>Mittel</option>
+        <option value="large">Groß</option>
+        <option value="giant">Sehr groß</option>
+      </select>
+    </label>
+
+    <label>
+      Sensorposition
+
+      <select id="sensorPosition">
+        <option value="back" selected>Rückensteg</option>
+        <option value="shoulder">Schulterbereich</option>
+        <option value="chest">Bruststeg</option>
+        <option value="side">Seitlicher Gurt</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="controls">
+    <button id="btnMeasure" class="btn btn-measure">
+      ANALYSE STARTEN
+    </button>
+
+    <button id="btnDemo" class="btn-action">
+      DEMO
+    </button>
+
+    <button id="btnSave" class="btn-action">
+      CSV
+    </button>
+
+    <button id="btnPdf" class="btn-action">
+      PDF
+    </button>
+  </section>
+
+  <main class="dashboard">
+    <div id="harnessBadge" class="harness-badge">
+      K9MATICS BEREIT
+    </div>
+
+    <section class="kpi-container">
+      <div class="glass-box">
+        <div class="kpi-title">PASSFORM</div>
+        <div id="kpiFit" class="kpi-value">—</div>
+      </div>
+
+      <div class="glass-box">
+        <div class="kpi-title">STABILITÄT</div>
+        <div id="kpiStability" class="kpi-value">0%</div>
+      </div>
+
+      <div class="glass-box">
+        <div class="kpi-title">VERSCHIEBUNG</div>
+        <div id="kpiShift" class="kpi-value">0°</div>
+      </div>
+
+      <div class="glass-box">
+        <div class="kpi-title">ROTATION</div>
+        <div id="kpiRotation" class="kpi-value">0°</div>
       </div>
     </section>
-  </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+    <section id="hud-radar-container">
+      <div class="radar-ring radar-ring-large"></div>
+      <div class="radar-ring radar-ring-small"></div>
+
+      <div class="crosshair-h"></div>
+      <div class="crosshair-v"></div>
+
+      <div id="radar-dot"></div>
+
+      <div class="hud-label">
+        HARNESS MOTION FIELD
+      </div>
+
+      <div id="hudCoords" class="hud-coords">
+        X:0 Y:0
