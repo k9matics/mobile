@@ -1,20 +1,14 @@
 "use strict";
 
 /*
-  CANINE GAIT HUD
-  pdf.js
-  Version 2.2
-
-  Erstellt einen kompakten Messbericht.
+  HARNELYZER
+  PDF-Bericht
 */
 
 async function exportToPDF() {
-  if (
-    !window.jspdf ||
-    !window.jspdf.jsPDF
-  ) {
+  if (!window.jspdf?.jsPDF) {
     throw new Error(
-      "PDF-BIBLIOTHEK WURDE NICHT GELADEN"
+      "PDF-BIBLIOTHEK NICHT GELADEN"
     );
   }
 
@@ -26,130 +20,78 @@ async function exportToPDF() {
     "a4"
   );
 
-  function textOf(id) {
-    const element =
-      document.getElementById(id);
-
-    return element
-      ? element.textContent.trim()
-      : "—";
+  function valueOf(id) {
+    return document
+      .getElementById(id)
+      ?.textContent
+      .trim() || "—";
   }
-
-  const dogSizeElement =
-    document.getElementById("dogSize");
-
-  const sensorPositionElement =
-    document.getElementById(
-      "sensorPosition"
-    );
-
-  const dogSize =
-    dogSizeElement?.selectedOptions?.[0]
-      ?.textContent ||
-    "—";
-
-  const sensorPosition =
-    sensorPositionElement?.selectedOptions?.[0]
-      ?.textContent ||
-    "—";
-
-  const date = new Date()
-    .toLocaleString("de-DE");
 
   pdf.setFillColor(5, 7, 9);
   pdf.rect(0, 0, 210, 297, "F");
 
   pdf.setTextColor(0, 255, 204);
+  pdf.setFontSize(20);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(18);
 
   pdf.text(
-    "CANINE GAIT HUD",
+    window.APP_META?.name || "HARNELYZER",
     14,
     18
   );
 
-  pdf.setFontSize(8);
-
-  pdf.text(
-    "Technischer Bewegungsbericht",
-    14,
-    24
-  );
-
-  pdf.setDrawColor(0, 255, 204);
-  pdf.line(14, 28, 196, 28);
-
   pdf.setTextColor(201, 209, 217);
-  pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
+  pdf.setFont("helvetica", "normal");
 
-  const reportLines = [
-    `Datum: ${date}`,
-    `Hundegröße: ${dogSize}`,
-    `Sensorposition: ${sensorPosition}`,
-    `Gangart: ${textOf("kpiGait")}`,
-    `Schrittfrequenz: ${textOf("kpiCadence")} Schritte/min`,
-    `Regelmäßigkeit: ${textOf("kpiRegularity")}`,
-    `Asymmetrie: ${textOf("kpiAsymmetry")}`,
-    `Bewegungsintensität: ${textOf("motionValue")}`,
-    `Neigung links/rechts: ${textOf("rollValue")}`,
-    `Neigung vorne/hinten: ${textOf("pitchValue")}`,
-    `Status: ${textOf("analysisStatus")}`
+  const lines = [
+    `Version: v${window.APP_META?.version || "—"}`,
+    `Datum: ${new Date().toLocaleString("de-DE")}`,
+    `Gangart: ${valueOf("kpiGait")}`,
+    `Schritte/Minute: ${valueOf("kpiCadence")}`,
+    `Regelmässigkeit: ${valueOf("kpiRegularity")}`,
+    `Asymmetrie: ${valueOf("kpiAsymmetry")}`,
+    `Bewegung: ${valueOf("motionValue")}`,
+    `Neigung links/rechts: ${valueOf("rollValue")}`,
+    `Neigung vorne/hinten: ${valueOf("pitchValue")}`,
+    `Status: ${valueOf("analysisStatus")}`
   ];
 
-  let y = 40;
+  let y = 36;
 
-  reportLines.forEach(line => {
+  lines.forEach(line => {
     pdf.text(line, 14, y);
     y += 8;
   });
 
-  const chartElement =
+  const canvas =
     document.getElementById("sensorChart");
 
-  if (chartElement) {
+  if (canvas) {
     try {
-      const image = chartElement.toDataURL(
-        "image/png",
-        1
-      );
-
       pdf.addImage(
-        image,
+        canvas.toDataURL("image/png"),
         "PNG",
         14,
-        138,
+        125,
         182,
         72
       );
     } catch (error) {
-      console.warn(
-        "Diagramm konnte nicht in PDF eingebettet werden.",
-        error
-      );
+      console.warn(error);
     }
   }
-
-  pdf.setDrawColor(48, 54, 61);
-  pdf.line(14, 222, 196, 222);
 
   pdf.setTextColor(139, 148, 158);
   pdf.setFontSize(8);
 
   pdf.text(
-    "Hinweis: Diese Anwendung dient der technischen Beobachtung.",
+    "Technische Beobachtung – keine tierärztliche Diagnose.",
     14,
-    232
-  );
-
-  pdf.text(
-    "Sie ersetzt keine tierärztliche Untersuchung oder Diagnose.",
-    14,
-    238
+    215
   );
 
   pdf.save(
-    `canine-gait-report-${Date.now()}.pdf`
+    `harnelyzer-report-${Date.now()}.pdf`
   );
 }
