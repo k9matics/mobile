@@ -1,21 +1,20 @@
 "use strict";
 
 /*
-  CANINE GAIT HUD
-  app.js
-  Version 2.3
-
-  Stabilitäts-Update:
-  - Diagramm nur ca. 10-mal pro Sekunde aktualisieren
-  - maximal 60 sichtbare Diagrammpunkte
-  - maximal 600 Rohdaten pro Messung
-  - keine unendliche Demo-Schleife
-  - Pull-to-refresh bleibt aktiv
+  HARNELYZER
+  Hauptsteuerung
 */
 
-const APP_VERSION = "2.3";
+const APP_VERSION =
+  window.APP_META?.version || "0.0.0";
+
+const APP_DATE =
+  window.APP_META?.date || "unbekannt";
 
 const el = {
+  appName: document.getElementById("appName"),
+  appVersion: document.getElementById("appVersion"),
+
   btnConnect: document.getElementById("btnConnect"),
   btnCalib: document.getElementById("btnCalib"),
   btnMeasure: document.getElementById("btnMeasure"),
@@ -24,24 +23,29 @@ const el = {
   btnPdf: document.getElementById("btnPdf"),
 
   dogSize: document.getElementById("dogSize"),
-  sensorPosition: document.getElementById("sensorPosition"),
-  chartMode: document.getElementById("chartMode"),
+  sensorPosition:
+    document.getElementById("sensorPosition"),
 
   gaitBadge: document.getElementById("gaitBadge"),
   gait: document.getElementById("kpiGait"),
   cadence: document.getElementById("kpiCadence"),
-  regularity: document.getElementById("kpiRegularity"),
-  asymmetry: document.getElementById("kpiAsymmetry"),
+  regularity:
+    document.getElementById("kpiRegularity"),
+  asymmetry:
+    document.getElementById("kpiAsymmetry"),
 
-  radarDot: document.getElementById("radar-dot"),
+  radarDot: document.getElementById("radarDot"),
   hudCoords: document.getElementById("hudCoords"),
   tiltValue: document.getElementById("tiltValue"),
 
   motionValue: document.getElementById("motionValue"),
   rollValue: document.getElementById("rollValue"),
   pitchValue: document.getElementById("pitchValue"),
-  analysisStatus: document.getElementById("analysisStatus"),
+  analysisStatus:
+    document.getElementById("analysisStatus"),
+
   debugRaw: document.getElementById("debugRaw"),
+  chartMode: document.getElementById("chartMode"),
 
   pullRefreshIndicator:
     document.getElementById("pullRefreshIndicator"),
@@ -51,54 +55,35 @@ const el = {
 };
 
 const MAX_CHART_POINTS = 60;
-const MAX_SAVED_ROWS = 600;
-const UI_UPDATE_INTERVAL_MS = 100;
+const MAX_ROWS = 600;
+const UI_INTERVAL = 120;
 const PULL_THRESHOLD = 75;
 
 let measuring = false;
 let demoRunning = false;
-let sensorConnected = false;
+let connected = false;
 
 let currentRows = [];
-let latestSensorData = null;
-
-let lastUiUpdateTime = 0;
-let updateQueued = false;
+let latestData = null;
+let lastUpdate = 0;
+let updateWaiting = false;
 
 let touchStartY = 0;
 let touchCurrentY = 0;
 let pulling = false;
-let refreshInProgress = false;
 
-const DOG_PROFILES = {
-  toy: {
-    label: "Sehr klein",
-    movementFactor: 1.35
-  },
+if (el.appName) {
+  el.appName.textContent =
+    window.APP_META?.name || "HARNELYZER";
+}
 
-  small: {
-    label: "Klein",
-    movementFactor: 1.15
-  },
-
-  medium: {
-    label: "Mittel",
-    movementFactor: 1.0
-  },
-
-  large: {
-    label: "Groß",
-    movementFactor: 0.85
-  },
-
-  giant: {
-    label: "Sehr groß",
-    movementFactor: 0.7
-  }
-};
+if (el.appVersion) {
+  el.appVersion.textContent =
+    `v${APP_VERSION} · ${APP_DATE}`;
+}
 
 const chart = new Chart(
-  document.getElementById("sensorChart").getContext("2d"),
+  document.getElementById("sensorChart"),
   {
     type: "line",
 
@@ -118,7 +103,7 @@ const chart = new Chart(
         {
           label: "Y",
           data: [],
-          borderColor: "#b3002d",
+          borderColor: "#ff0055",
           borderWidth: 1,
           pointRadius: 0,
           tension: 0.2
@@ -130,13 +115,11 @@ const chart = new Chart(
           borderColor: "#00ffcc",
           borderWidth: 2,
           pointRadius: 0,
-          tension: 0.2,
-          fill: true,
-          backgroundColor: "rgba(0,255,204,0.06)"
+          tension: 0.2
         },
 
         {
-          label: "Gesamt",
+          label: "GESAMT",
           data: [],
           borderColor: "#ffffff",
           borderWidth: 1,
@@ -150,12 +133,9 @@ const chart = new Chart(
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      normalized: true,
 
       plugins: {
         legend: {
-          display: true,
-
           labels: {
             color: "#c9d1d9",
             boxWidth: 8,
@@ -176,7 +156,7 @@ const chart = new Chart(
           },
 
           grid: {
-            color: "rgba(139,148,158,0.12)"
+            color: "rgba(139,148,158,0.1)"
           }
         },
 
@@ -189,7 +169,7 @@ const chart = new Chart(
           },
 
           grid: {
-            color: "rgba(139,148,158,0.12)"
+            color: "rgba(139,148,158,0.1)"
           }
         }
       }
@@ -197,34 +177,9 @@ const chart = new Chart(
   }
 );
 
-function setStatus(text) {
+function status(text) {
   el.gaitBadge.textContent = text;
-  el.debugRaw.textContent = text;
-}
-
-function updateStatusColor(text) {
-  if (
-    text.includes("AUFFÄLLIG") ||
-    text.includes("VERÄNDERUNG") ||
-    text.includes("FEHLER")
-  ) {
-    el.gaitBadge.style.color = "#ff0055";
-    el.analysisStatus.style.color = "#ff0055";
-    return;
-  }
-
-  if (
-    text.includes("UNREGEL") ||
-    text.includes("WENIG") ||
-    text.includes("WARTEN")
-  ) {
-    el.gaitBadge.style.color = "#ffcc00";
-    el.analysisStatus.style.color = "#ffcc00";
-    return;
-  }
-
-  el.gaitBadge.style.color = "#00ffcc";
-  el.analysisStatus.style.color = "#00ffcc";
+  el.analysisStatus.textContent = text;
 }
 
 function resetChart() {
@@ -237,38 +192,16 @@ function resetChart() {
   chart.update("none");
 }
 
-function normalizeSensorData(data) {
-  return {
-    timestamp: Number(data.timestamp) || Date.now(),
-
-    accX: Number(data.accX) || 0,
-    accY: Number(data.accY) || 0,
-    accZ: Number(data.accZ) || 0,
-
-    gyroX: Number(data.gyroX) || 0,
-    gyroY: Number(data.gyroY) || 0,
-    gyroZ: Number(data.gyroZ) || 0,
-
-    raw: data.raw ?? ""
-  };
-}
-
 function updateRadar(roll, pitch) {
-  const safeRoll = Number.isFinite(roll)
-    ? roll
-    : 0;
+  const x = Math.max(
+    -45,
+    Math.min(45, roll)
+  ) * 1.2;
 
-  const safePitch = Number.isFinite(pitch)
-    ? pitch
-    : 0;
-
-  const x =
-    Math.max(-45, Math.min(45, safeRoll)) *
-    1.2;
-
-  const y =
-    Math.max(-45, Math.min(45, safePitch)) *
-    0.8;
+  const y = Math.max(
+    -45,
+    Math.min(45, pitch)
+  ) * 0.8;
 
   el.radarDot.style.transform =
     `translate(${x}px, ${y}px)`;
@@ -277,10 +210,10 @@ function updateRadar(roll, pitch) {
     `X:${x.toFixed(0)} Y:${y.toFixed(0)}`;
 
   el.tiltValue.textContent =
-    `TILT: ${safeRoll.toFixed(1)}°`;
+    `TILT: ${roll.toFixed(1)}°`;
 }
 
-function addPointToChart(sample) {
+function addToChart(sample) {
   const time = new Date(
     sample.timestamp
   ).toLocaleTimeString(
@@ -323,31 +256,30 @@ function addPointToChart(sample) {
   chart.update("none");
 }
 
-function processData(inputData) {
-  const data = normalizeSensorData(inputData);
+function processData(data) {
+  const accX = Number(data.accX) || 0;
+  const accY = Number(data.accY) || 0;
+  const accZ = Number(data.accZ) || 0;
 
-  const totalAcceleration =
-    Analysis.magnitude(
-      data.accX,
-      data.accY,
-      data.accZ
-    );
+  const total =
+    Analysis.magnitude(accX, accY, accZ);
 
   const tilt =
-    Analysis.calculateTilt(
-      data.accX,
-      data.accY,
-      data.accZ
-    );
+    Analysis.calculateTilt(accX, accY, accZ);
 
   const sample = {
-    ...data,
+    timestamp: data.timestamp || Date.now(),
+    accX,
+    accY,
+    accZ,
 
-    totalAcceleration,
+    gyroX: Number(data.gyroX) || 0,
+    gyroY: Number(data.gyroY) || 0,
+    gyroZ: Number(data.gyroZ) || 0,
 
-    dynamicAcceleration:
-      Math.abs(totalAcceleration - 1),
-
+    raw: data.raw ?? "",
+    totalAcceleration: total,
+    dynamicAcceleration: Math.abs(total - 1),
     roll: tilt.roll,
     pitch: tilt.pitch
   };
@@ -357,31 +289,15 @@ function processData(inputData) {
 
   currentRows.push(sample);
 
-  if (
-    currentRows.length >
-    MAX_SAVED_ROWS
-  ) {
+  while (currentRows.length > MAX_ROWS) {
     currentRows.shift();
   }
 
-  addPointToChart(sample);
-
-  if (data.raw !== "") {
-    el.debugRaw.textContent =
-      `RAW: ${data.raw}`;
-  } else {
-    el.debugRaw.textContent =
-      `X:${data.accX.toFixed(2)} ` +
-      `Y:${data.accY.toFixed(2)} ` +
-      `Z:${data.accZ.toFixed(2)}`;
-  }
+  addToChart(sample);
 
   el.gait.textContent = result.gait;
-
   el.cadence.textContent =
-    Number.isFinite(result.cadence)
-      ? result.cadence.toFixed(0)
-      : "0";
+    result.cadence.toFixed(0);
 
   el.regularity.textContent =
     `${result.regularity.toFixed(0)}%`;
@@ -398,117 +314,87 @@ function processData(inputData) {
   el.pitchValue.textContent =
     `${sample.pitch.toFixed(1)}°`;
 
-  el.analysisStatus.textContent =
-    result.status;
+  el.debugRaw.textContent =
+    `RAW: ${sample.raw}`;
 
   updateRadar(
     sample.roll,
     sample.pitch
   );
 
-  updateStatusColor(result.status);
+  status(result.status);
 }
 
-function queueSensorUpdate(data) {
-  latestSensorData = data;
+function queueData(data) {
+  latestData = data;
 
   const now = Date.now();
+  const elapsed = now - lastUpdate;
 
-  if (
-    now - lastUiUpdateTime >=
-    UI_UPDATE_INTERVAL_MS
-  ) {
-    lastUiUpdateTime = now;
-    processData(latestSensorData);
+  if (elapsed >= UI_INTERVAL) {
+    lastUpdate = now;
+    processData(latestData);
     return;
   }
 
-  if (updateQueued) {
+  if (updateWaiting) {
     return;
   }
 
-  updateQueued = true;
-
-  const waitTime =
-    UI_UPDATE_INTERVAL_MS -
-    (now - lastUiUpdateTime);
+  updateWaiting = true;
 
   setTimeout(() => {
-    updateQueued = false;
-    lastUiUpdateTime = Date.now();
+    updateWaiting = false;
+    lastUpdate = Date.now();
 
-    if (latestSensorData) {
-      processData(latestSensorData);
+    if (latestData) {
+      processData(latestData);
     }
-  }, Math.max(waitTime, 0));
+  }, UI_INTERVAL - elapsed);
 }
 
 function startMeasurement() {
   measuring = true;
   currentRows = [];
-  latestSensorData = null;
 
   Analysis.reset();
   resetChart();
 
-  el.btnMeasure.classList.add("active");
-
   el.btnMeasure.textContent =
     "MESSUNG LÄUFT";
 
-  setStatus("MESSUNG AKTIV");
+  el.btnMeasure.classList.add("active");
+
+  status("MESSUNG AKTIV");
 }
 
 function stopMeasurement() {
   measuring = false;
-  latestSensorData = null;
-
-  el.btnMeasure.classList.remove("active");
 
   el.btnMeasure.textContent =
     "MESSUNG STARTEN";
 
-  setStatus("MESSUNG BEENDET");
+  el.btnMeasure.classList.remove("active");
+
+  status("MESSUNG BEENDET");
 }
 
-function createDemoData() {
-  const time = Date.now() / 200;
-
-  const profile =
-    DOG_PROFILES[el.dogSize.value] ||
-    DOG_PROFILES.medium;
-
-  const factor =
-    profile.movementFactor;
+function demoData() {
+  const t = Date.now() / 250;
 
   return {
     timestamp: Date.now(),
-
-    accX:
-      Math.sin(time * 0.8) *
-      0.25 *
-      factor,
-
-    accY:
-      Math.cos(time * 0.7) *
-      0.18 *
-      factor,
-
-    accZ:
-      1 +
-      Math.sin(time * 1.8) *
-      0.45 *
-      factor,
-
+    accX: Math.sin(t * 0.7) * 0.25,
+    accY: Math.cos(t * 0.8) * 0.16,
+    accZ: 1 + Math.sin(t * 1.7) * 0.35,
     gyroX: 0,
     gyroY: 0,
     gyroZ: 0,
-
     raw: "DEMO"
   };
 }
 
-function demoLoop() {
+function runDemo() {
   if (!demoRunning) {
     return;
   }
@@ -517,143 +403,74 @@ function demoLoop() {
     startMeasurement();
   }
 
-  queueSensorUpdate(createDemoData());
+  queueData(demoData());
 
-  setTimeout(demoLoop, 120);
+  setTimeout(runDemo, 130);
 }
 
 async function connectSensor() {
   try {
-    setStatus("GERÄT AUSWÄHLEN");
-
     await Sensor.connect();
 
-    sensorConnected = true;
+    connected = true;
 
     el.btnConnect.textContent =
       "VERBUNDEN";
 
-    el.btnConnect.classList.add("ready");
-
-    setStatus("SENSOR VERBUNDEN");
+    el.btnConnect.classList.add("connected");
   } catch (error) {
-    sensorConnected = false;
-
-    el.btnConnect.textContent =
-      "SENSOR";
-
-    el.btnConnect.classList.remove("ready");
-
-    setStatus(
-      `FEHLER: ${error.message}`
-    );
+    status(`FEHLER: ${error.message}`);
   }
 }
 
 async function disconnectSensor() {
-  try {
-    await Sensor.disconnect();
-  } catch (error) {
-    console.warn(error);
-  }
+  await Sensor.disconnect();
 
-  sensorConnected = false;
+  connected = false;
 
   el.btnConnect.textContent = "SENSOR";
-
-  el.btnConnect.classList.remove("ready");
-
-  setStatus("SENSOR GETRENNT");
-}
-
-function calibrateSensor() {
-  if (!currentRows.length) {
-    setStatus("NOCH KEINE DATEN");
-    return;
-  }
-
-  const reference =
-    Analysis.setReference();
-
-  el.btnCalib.textContent =
-    "CALIB OK";
-
-  el.btnCalib.classList.add("ready");
-
-  setStatus(
-    `REFERENZ: ` +
-    `${reference.asymmetry.toFixed(0)}%`
-  );
+  el.btnConnect.classList.remove("connected");
 }
 
 function saveCsv() {
-  if (!currentRows.length) {
-    setStatus("KEINE MESSDATEN");
-    return;
+  try {
+    Storage.save({
+      timestamp: Date.now(),
+      rows: currentRows
+    });
+
+    Storage.exportCsv(currentRows);
+
+    status("CSV GESPEICHERT");
+  } catch (error) {
+    status(`CSV FEHLER: ${error.message}`);
   }
-
-  Storage.save({
-    timestamp: Date.now(),
-    dogSize: el.dogSize.value,
-    sensorPosition: el.sensorPosition.value,
-    rows: currentRows
-  });
-
-  Storage.exportCsv(currentRows);
-
-  setStatus("CSV GESPEICHERT");
 }
 
 async function savePdf() {
+  try {
+    await exportToPDF();
+    status("PDF GESPEICHERT");
+  } catch (error) {
+    status(`PDF FEHLER: ${error.message}`);
+  }
+}
+
+function calibrate() {
   if (!currentRows.length) {
-    setStatus("KEINE MESSDATEN");
+    status("ZUERST MESSEN");
     return;
   }
 
-  try {
-    await exportToPDF();
-    setStatus("PDF GESPEICHERT");
-  } catch (error) {
-    setStatus(
-      `PDF FEHLER: ${error.message}`
-    );
-  }
+  Analysis.setReference();
+
+  el.btnCalib.textContent = "CALIB OK";
+  el.btnCalib.classList.add("ready");
+
+  status("REFERENZ GESPEICHERT");
 }
 
-function changeChartMode(mode) {
-  const datasets = chart.data.datasets;
-
-  if (mode === "acceleration") {
-    datasets.forEach(dataset => {
-      dataset.hidden = false;
-    });
-
-    chart.options.scales.y.title.text =
-      "Beschleunigung";
-  }
-
-  if (mode === "gyro") {
-    datasets.forEach(dataset => {
-      dataset.hidden = true;
-    });
-
-    chart.options.scales.y.title.text =
-      "Gyroskop nicht verfügbar";
-  }
-
-  if (mode === "tilt") {
-    datasets.forEach(dataset => {
-      dataset.hidden = true;
-    });
-
-    chart.options.scales.y.title.text =
-      "Neigung im HUD sichtbar";
-  }
-
-  chart.update("none");
-}
-
-function resetPullIndicator() {
+function resetPull() {
   el.pullRefreshIndicator.style.transform =
     "translateY(0)";
 
@@ -665,108 +482,102 @@ function resetPullIndicator() {
     "ZUM AKTUALISIEREN ZIEHEN";
 }
 
-function updatePullIndicator(distance) {
-  const visibleDistance =
-    Math.min(distance * 0.65, 90);
+document.addEventListener(
+  "touchstart",
+  event => {
+    if (
+      window.scrollY > 0 ||
+      !event.touches.length
+    ) {
+      return;
+    }
 
-  el.pullRefreshIndicator.style.transform =
-    `translateY(${visibleDistance}px)`;
-
-  if (distance >= PULL_THRESHOLD) {
-    el.pullRefreshIndicator.classList.add(
-      "ready"
-    );
-
-    el.pullRefreshText.textContent =
-      "LOS LASSEN ZUM AKTUALISIEREN";
-  } else {
-    el.pullRefreshIndicator.classList.remove(
-      "ready"
-    );
-
-    el.pullRefreshText.textContent =
-      "ZUM AKTUALISIEREN ZIEHEN";
+    touchStartY = event.touches[0].clientY;
+    touchCurrentY = touchStartY;
+    pulling = true;
+  },
+  {
+    passive: true
   }
-}
+);
 
-function handleTouchStart(event) {
-  if (
-    refreshInProgress ||
-    window.scrollY > 0 ||
-    !event.touches.length
-  ) {
-    return;
+document.addEventListener(
+  "touchmove",
+  event => {
+    if (!pulling || !event.touches.length) {
+      return;
+    }
+
+    touchCurrentY = event.touches[0].clientY;
+
+    const distance =
+      touchCurrentY - touchStartY;
+
+    if (distance <= 0) {
+      resetPull();
+      return;
+    }
+
+    if (distance > 8) {
+      event.preventDefault();
+    }
+
+    el.pullRefreshIndicator.style.transform =
+      `translateY(${Math.min(distance * 0.65, 90)}px)`;
+
+    if (distance >= PULL_THRESHOLD) {
+      el.pullRefreshIndicator.classList.add(
+        "ready"
+      );
+
+      el.pullRefreshText.textContent =
+        "LOS LASSEN ZUM AKTUALISIEREN";
+    }
+  },
+  {
+    passive: false
   }
+);
 
-  touchStartY = event.touches[0].clientY;
-  touchCurrentY = touchStartY;
-  pulling = true;
-}
+document.addEventListener(
+  "touchend",
+  () => {
+    if (!pulling) {
+      return;
+    }
 
-function handleTouchMove(event) {
-  if (
-    !pulling ||
-    refreshInProgress ||
-    !event.touches.length
-  ) {
-    return;
+    const distance =
+      touchCurrentY - touchStartY;
+
+    pulling = false;
+
+    if (distance >= PULL_THRESHOLD) {
+      el.pullRefreshText.textContent =
+        "AKTUALISIERE...";
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
+
+      return;
+    }
+
+    resetPull();
+  },
+  {
+    passive: true
   }
-
-  touchCurrentY = event.touches[0].clientY;
-
-  const distance =
-    touchCurrentY - touchStartY;
-
-  if (distance <= 0) {
-    resetPullIndicator();
-    return;
-  }
-
-  if (distance > 8) {
-    event.preventDefault();
-  }
-
-  updatePullIndicator(distance);
-}
-
-function handleTouchEnd() {
-  if (!pulling || refreshInProgress) {
-    return;
-  }
-
-  const distance =
-    touchCurrentY - touchStartY;
-
-  pulling = false;
-
-  if (distance >= PULL_THRESHOLD) {
-    refreshInProgress = true;
-
-    el.pullRefreshText.textContent =
-      "AKTUALISIERE...";
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 200);
-  } else {
-    resetPullIndicator();
-  }
-}
+);
 
 el.btnConnect.addEventListener(
   "click",
   async () => {
-    if (sensorConnected) {
+    if (connected) {
       await disconnectSensor();
     } else {
       await connectSensor();
     }
   }
-);
-
-el.btnCalib.addEventListener(
-  "click",
-  calibrateSensor
 );
 
 el.btnMeasure.addEventListener(
@@ -785,15 +596,24 @@ el.btnDemo.addEventListener(
   () => {
     demoRunning = !demoRunning;
 
-    if (demoRunning) {
-      el.btnDemo.textContent =
-        "DEMO STOP";
+    el.btnDemo.classList.toggle(
+      "active",
+      demoRunning
+    );
 
-      demoLoop();
-    } else {
-      el.btnDemo.textContent = "DEMO";
+    el.btnDemo.textContent = demoRunning
+      ? "DEMO STOP"
+      : "DEMO";
+
+    if (demoRunning) {
+      runDemo();
     }
   }
+);
+
+el.btnCalib.addEventListener(
+  "click",
+  calibrate
 );
 
 el.btnSave.addEventListener(
@@ -806,56 +626,27 @@ el.btnPdf.addEventListener(
   savePdf
 );
 
-el.chartMode.addEventListener(
-  "change",
-  event => {
-    changeChartMode(event.target.value);
-  }
-);
-
-document.addEventListener(
-  "touchstart",
-  handleTouchStart,
-  {
-    passive: true
-  }
-);
-
-document.addEventListener(
-  "touchmove",
-  handleTouchMove,
-  {
-    passive: false
-  }
-);
-
-document.addEventListener(
-  "touchend",
-  handleTouchEnd,
-  {
-    passive: true
-  }
-);
-
 Sensor.on(
   "status",
-  sensorStatus => {
-    setStatus(sensorStatus);
+  text => {
+    status(text);
 
-    if (
-      sensorStatus.includes("GETRENNT")
-    ) {
-      sensorConnected = false;
+    if (text.includes("GETRENNT")) {
+      connected = false;
+
       el.btnConnect.textContent = "SENSOR";
-      el.btnConnect.classList.remove("ready");
+
+      el.btnConnect.classList.remove(
+        "connected"
+      );
     }
   }
 );
 
 Sensor.on(
   "error",
-  sensorError => {
-    setStatus(sensorError);
+  text => {
+    status(text);
   }
 );
 
@@ -864,15 +655,15 @@ Sensor.on(
   data => {
     if (!measuring) {
       el.debugRaw.textContent =
-        `RAW: ${data.raw ?? "OK"}`;
+        `RAW: ${data.raw}`;
 
       return;
     }
 
-    queueSensorUpdate(data);
+    queueData(data);
   }
 );
 
-setStatus(
-  `BEREIT · v${APP_VERSION}`
+status(
+  `BEREIT · v${APP_VERSION} · ${APP_DATE}`
 );
