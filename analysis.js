@@ -31,7 +31,6 @@ const Analysis = (() => {
 
   function detectGait(packet) {
     const motion = calcMotion(packet);
-
     if (motion >= 1.75) return "GALOPP";
     if (motion >= 1.35) return "TRAB";
     return "SCHRITT";
