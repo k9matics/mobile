@@ -27,6 +27,7 @@ const App = (() => {
     els.btnDemo = byId("btnDemo");
     els.btnSave = byId("btnSave");
     els.btnPdf = byId("btnPdf");
+    els.btnRefresh = byId("btnRefresh");
     els.chartMode = byId("chartMode");
 
     els.gaitBadge = byId("gaitBadge");
@@ -50,8 +51,15 @@ const App = (() => {
 
   function setVersion() {
     if (!window.APP_META) return;
-    if (els.appName) els.appName.textContent = window.APP_META.name;
-    if (els.appVersion) els.appVersion.textContent = `v${window.APP_META.version}`;
+
+    if (els.appName) {
+      els.appName.textContent = window.APP_META.name;
+    }
+
+    if (els.appVersion) {
+      els.appVersion.textContent = `v${window.APP_META.version}`;
+    }
+
     document.title = window.APP_META.name;
   }
 
@@ -108,16 +116,35 @@ const App = (() => {
         },
         scales: {
           x: {
-            ticks: { color: "#7f8a95", maxTicksLimit: 6 },
-            grid: { color: "rgba(0,234,255,0.08)" }
+            ticks: {
+              color: "#7f8a95",
+              maxTicksLimit: 6
+            },
+            grid: {
+              color: "rgba(0,234,255,0.08)"
+            }
           },
           y: {
-            ticks: { color: "#7f8a95" },
-            grid: { color: "rgba(0,234,255,0.08)" }
+            ticks: {
+              color: "#7f8a95"
+            },
+            grid: {
+              color: "rgba(0,234,255,0.08)"
+            }
           }
         }
       }
     });
+  }
+
+  function clearChart() {
+    if (!state.chart) return;
+
+    state.chart.data.labels = [];
+    state.chart.data.datasets.forEach(dataset => {
+      dataset.data = [];
+    });
+    state.chart.update("none");
   }
 
   function pushChartSample(packet) {
@@ -155,7 +182,7 @@ const App = (() => {
 
     if (chart.data.labels.length > 40) {
       chart.data.labels.shift();
-      chart.data.datasets.forEach(ds => ds.data.shift());
+      chart.data.datasets.forEach(dataset => dataset.data.shift());
     }
 
     chart.update("none");
@@ -170,7 +197,7 @@ const App = (() => {
 
     const px = x * 18;
     const py = y * -18;
-    const scale = 1 + (z * 0.03);
+    const scale = 1 + z * 0.03;
 
     els.radarCrosshair.style.transform =
       `translate(${px}px, ${py}px) scale(${scale.toFixed(3)})`;
@@ -195,15 +222,13 @@ const App = (() => {
             packet.accZ * packet.accZ
           ).toFixed(2),
           roll: (
-            Math.atan2(packet.accY, packet.accZ) *
-            (180 / Math.PI)
+            Math.atan2(packet.accY, packet.accZ) * (180 / Math.PI)
           ).toFixed(1),
           pitch: (
             Math.atan2(
               -packet.accX,
               Math.sqrt(packet.accY * packet.accY + packet.accZ * packet.accZ)
-            ) *
-            (180 / Math.PI)
+            ) * (180 / Math.PI)
           ).toFixed(1),
           gait: "SCHRITT",
           cadence: 0,
@@ -214,18 +239,23 @@ const App = (() => {
     if (els.motionValue) els.motionValue.textContent = `${result.motion} g`;
     if (els.rollValue) els.rollValue.textContent = `${result.roll}°`;
     if (els.pitchValue) els.pitchValue.textContent = `${result.pitch}°`;
+
     if (els.analysisStatus) {
       els.analysisStatus.textContent = state.measuring ? "MESSUNG" : "LIVE";
     }
 
     if (els.kpiGait) els.kpiGait.textContent = result.gait;
-    if (els.gaitBadge) {
-      els.gaitBadge.textContent = state.connected ? "K9MATICS VERBUNDEN" : "BEREIT";
-    }
     if (els.kpiCadence) els.kpiCadence.textContent = String(result.cadence);
     if (els.kpiRegularity) els.kpiRegularity.textContent = `${result.regularity}%`;
     if (els.kpiAsymmetry) els.kpiAsymmetry.textContent = `${result.asymmetry}%`;
-    if (els.debugRaw) els.debugRaw.textContent = packet.raw || "NO DATA";
+
+    if (els.gaitBadge) {
+      els.gaitBadge.textContent = state.connected ? "K9MATICS VERBUNDEN" : "BEREIT";
+    }
+
+    if (els.debugRaw) {
+      els.debugRaw.textContent = packet.raw || "NO DATA";
+    }
   }
 
   function handlePacket(packet) {
@@ -237,7 +267,10 @@ const App = (() => {
       state.samples.shift();
     }
 
-    Storage.setSamples(state.samples);
+    if (window.Storage && typeof Storage.setSamples === "function") {
+      Storage.setSamples(state.samples);
+    }
+
     updateRadar(packet);
     updateMetrics(packet);
     pushChartSample(packet);
@@ -278,7 +311,9 @@ const App = (() => {
 
     if (els.btnMeasure) {
       els.btnMeasure.classList.toggle("active", state.measuring);
-      els.btnMeasure.textContent = state.measuring ? "MESSUNG STOPPEN" : "MESSUNG STARTEN";
+      els.btnMeasure.textContent = state.measuring
+        ? "MESSUNG STOPPEN"
+        : "MESSUNG STARTEN";
     }
 
     if (els.analysisStatus) {
@@ -306,6 +341,7 @@ const App = (() => {
 
     if (els.btnDemo) {
       els.btnDemo.classList.toggle("active", state.demo);
+      els.btnDemo.textContent = state.demo ? "DEMO AKTIV" : "DEMO";
     }
 
     if (!state.demo) {
@@ -320,7 +356,9 @@ const App = (() => {
   }
 
   function downloadCsv() {
-    const samples = Storage.getSamples();
+    const samples = window.Storage && typeof Storage.getSamples === "function"
+      ? Storage.getSamples()
+      : [...state.samples];
 
     if (!samples.length) {
       if (els.debugRaw) els.debugRaw.textContent = "KEINE DATEN FÜR CSV";
@@ -345,58 +383,167 @@ const App = (() => {
     const csv = [header, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "harnelyzer-export.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "harnelyzer-export.csv";
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 250);
+
+    if (els.debugRaw) {
+      els.debugRaw.textContent = "CSV EXPORT GESTARTET";
+    }
   }
 
   function exportPdf() {
-    if (window.PDFExport && typeof PDFExport.create === "function") {
-      PDFExport.create({
-        appMeta: window.APP_META,
-        latest: state.lastPacket,
-        summary: state.lastPacket && window.Analysis ? Analysis.summarize(state.lastPacket) : null,
-        samples: state.samples
-      });
-      return;
+    try {
+      if (window.PDFExport && typeof PDFExport.create === "function") {
+        PDFExport.create({
+          appMeta: window.APP_META,
+          latest: state.lastPacket,
+          summary: state.lastPacket && window.Analysis
+            ? Analysis.summarize(state.lastPacket)
+            : null,
+          samples: state.samples
+        });
+
+        if (els.debugRaw) {
+          els.debugRaw.textContent = "PDF EXPORT GESTARTET";
+        }
+        return;
+      }
+
+      if (els.debugRaw) {
+        els.debugRaw.textContent = "PDF MODUL FEHLT";
+      }
+    } catch (error) {
+      console.error(error);
+      if (els.debugRaw) {
+        els.debugRaw.textContent = `PDF FEHLER: ${error.message || error}`;
+      }
+    }
+  }
+
+  async function refreshApp() {
+    if (els.debugRaw) {
+      els.debugRaw.textContent = "AKTUALISIERE...";
     }
 
-    if (els.debugRaw) els.debugRaw.textContent = "PDF MODUL FEHLT";
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+        }
+      }
+    } catch (error) {
+      console.warn("SW UPDATE FEHLER", error);
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("_r", Date.now().toString());
+    window.location.replace(url.toString());
+  }
+
+  function resetSession() {
+    state.sampleCount = 0;
+    state.lastPacket = null;
+    state.samples = [];
+
+    if (window.Storage && typeof Storage.clear === "function") {
+      Storage.clear();
+    }
+
+    clearChart();
+
+    if (els.kpiGait) els.kpiGait.textContent = "—";
+    if (els.kpiCadence) els.kpiCadence.textContent = "0";
+    if (els.kpiRegularity) els.kpiRegularity.textContent = "0%";
+    if (els.kpiAsymmetry) els.kpiAsymmetry.textContent = "0%";
+
+    if (els.motionValue) els.motionValue.textContent = "0.00 g";
+    if (els.rollValue) els.rollValue.textContent = "0.0°";
+    if (els.pitchValue) els.pitchValue.textContent = "0.0°";
+
+    if (els.analysisStatus) els.analysisStatus.textContent = "RESET";
+    if (els.debugRaw) els.debugRaw.textContent = "SESSION RESET";
+    if (els.gaitBadge) els.gaitBadge.textContent = state.connected ? "K9MATICS VERBUNDEN" : "BEREIT";
+
+    if (els.radarCrosshair) {
+      els.radarCrosshair.style.transform = "translate(0px, 0px) scale(1)";
+    }
+
+    if (els.hudCoords) els.hudCoords.textContent = "X:0 Y:0";
+    if (els.tiltValue) els.tiltValue.textContent = "TILT: 0°";
   }
 
   function bindEvents() {
-    if (els.btnConnect) els.btnConnect.addEventListener("click", onConnectClick);
-    if (els.btnMeasure) els.btnMeasure.addEventListener("click", onMeasureClick);
-    if (els.btnDemo) els.btnDemo.addEventListener("click", toggleDemo);
-    if (els.btnSave) els.btnSave.addEventListener("click", downloadCsv);
-    if (els.btnPdf) els.btnPdf.addEventListener("click", exportPdf);
+    if (els.btnConnect) {
+      els.btnConnect.addEventListener("click", onConnectClick);
+    }
+
+    if (els.btnCalib) {
+      els.btnCalib.addEventListener("click", resetSession);
+    }
+
+    if (els.btnMeasure) {
+      els.btnMeasure.addEventListener("click", onMeasureClick);
+    }
+
+    if (els.btnDemo) {
+      els.btnDemo.addEventListener("click", toggleDemo);
+    }
+
+    if (els.btnSave) {
+      els.btnSave.addEventListener("click", downloadCsv);
+    }
+
+    if (els.btnPdf) {
+      els.btnPdf.addEventListener("click", exportPdf);
+    }
+
+    if (els.btnRefresh) {
+      els.btnRefresh.addEventListener("click", refreshApp);
+    }
 
     if (els.chartMode) {
       els.chartMode.addEventListener("change", event => {
         state.chartMode = event.target.value;
-        if (state.chart) {
-          state.chart.data.labels = [];
-          state.chart.data.datasets.forEach(ds => {
-            ds.data = [];
-          });
-          state.chart.update("none");
-        }
+        clearChart();
       });
     }
 
     Sensor.on("data", handlePacket);
 
     Sensor.on("status", status => {
-      if (els.analysisStatus) els.analysisStatus.textContent = status;
-      if (/VERBUNDEN/i.test(status)) setConnectedUi(true);
-      if (/GETRENNT/i.test(status)) setConnectedUi(false, "SENSOR");
+      if (els.analysisStatus) {
+        els.analysisStatus.textContent = status;
+      }
+
+      if (/VERBUNDEN/i.test(status)) {
+        setConnectedUi(true);
+      }
+
+      if (/GETRENNT/i.test(status)) {
+        setConnectedUi(false, "SENSOR");
+      }
     });
 
     Sensor.on("error", message => {
-      if (els.analysisStatus) els.analysisStatus.textContent = "SENSORFEHLER";
-      if (els.debugRaw) els.debugRaw.textContent = message;
+      if (els.analysisStatus) {
+        els.analysisStatus.textContent = "SENSORFEHLER";
+      }
+
+      if (els.debugRaw) {
+        els.debugRaw.textContent = message;
+      }
     });
   }
 
