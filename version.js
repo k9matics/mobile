@@ -1,4 +1,4 @@
-""use strict";
+"use strict";
 
 /*
   HARNELYZER
@@ -8,6 +8,6 @@
 
 window.APP_META = {
   name: "HARNELYZER",
-  version: "2.3.3",
+  version: "2.4.0",
   date: "05.09.2026"
 };
