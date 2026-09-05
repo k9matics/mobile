@@ -1,97 +1,58 @@
 "use strict";
 
-/*
-  HARNELYZER
-  PDF-Bericht
-*/
-
-async function exportToPDF() {
-  if (!window.jspdf?.jsPDF) {
-    throw new Error(
-      "PDF-BIBLIOTHEK NICHT GELADEN"
-    );
-  }
-
-  const { jsPDF } = window.jspdf;
-
-  const pdf = new jsPDF(
-    "p",
-    "mm",
-    "a4"
-  );
-
-  function valueOf(id) {
-    return document
-      .getElementById(id)
-      ?.textContent
-      .trim() || "—";
-  }
-
-  pdf.setFillColor(5, 7, 9);
-  pdf.rect(0, 0, 210, 297, "F");
-
-  pdf.setTextColor(0, 255, 204);
-  pdf.setFontSize(20);
-  pdf.setFont("helvetica", "bold");
-
-  pdf.text(
-    window.APP_META?.name || "HARNELYZER",
-    14,
-    18
-  );
-
-  pdf.setTextColor(201, 209, 217);
-  pdf.setFontSize(10);
-  pdf.setFont("helvetica", "normal");
-
-  const lines = [
-    `Version: v${window.APP_META?.version || "—"}`,
-    `Datum: ${new Date().toLocaleString("de-DE")}`,
-    `Gangart: ${valueOf("kpiGait")}`,
-    `Schritte/Minute: ${valueOf("kpiCadence")}`,
-    `Regelmässigkeit: ${valueOf("kpiRegularity")}`,
-    `Asymmetrie: ${valueOf("kpiAsymmetry")}`,
-    `Bewegung: ${valueOf("motionValue")}`,
-    `Neigung links/rechts: ${valueOf("rollValue")}`,
-    `Neigung vorne/hinten: ${valueOf("pitchValue")}`,
-    `Status: ${valueOf("analysisStatus")}`
-  ];
-
-  let y = 36;
-
-  lines.forEach(line => {
-    pdf.text(line, 14, y);
-    y += 8;
-  });
-
-  const canvas =
-    document.getElementById("sensorChart");
-
-  if (canvas) {
-    try {
-      pdf.addImage(
-        canvas.toDataURL("image/png"),
-        "PNG",
-        14,
-        125,
-        182,
-        72
-      );
-    } catch (error) {
-      console.warn(error);
+const PDFExport = (() => {
+  function create(payload) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error("JSPDF NICHT VERFÜGBAR");
     }
+
+    const doc = new window.jspdf.jsPDF();
+    const meta = payload.appMeta || {};
+    const latest = payload.latest || null;
+    const summary = payload.summary || null;
+    const samples = payload.samples || [];
+
+    let y = 18;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(meta.name || "HARNELYZER", 14, y);
+
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Version: ${meta.version || "-"}`, 14, y);
+    y += 6;
+    doc.text(`Datum: ${meta.date || "-"}`, 14, y);
+
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("LIVE-ZUSAMMENFASSUNG", 14, y);
+
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    const lines = [
+      `Samples: ${samples.length}`,
+      `Gangart: ${summary ? summary.gait : "-"}`,
+      `Cadence: ${summary ? summary.cadence : "-"}`,
+      `Regelmässig: ${summary ? summary.regularity + "%" : "-"}`,
+      `Asymmetrie: ${summary ? summary.asymmetry + "%" : "-"}`,
+      `Motion: ${summary ? summary.motion + " g" : "-"}`,
+      `Roll: ${summary ? summary.roll + "°" : "-"}`,
+      `Pitch: ${summary ? summary.pitch + "°" : "-"}`,
+      `Raw: ${latest?.raw || "-"}`
+    ];
+
+    lines.forEach(line => {
+      doc.text(line, 14, y);
+      y += 6;
+    });
+
+    doc.save("harnelyzer-report.pdf");
   }
 
-  pdf.setTextColor(139, 148, 158);
-  pdf.setFontSize(8);
-
-  pdf.text(
-    "Technische Beobachtung – keine tierärztliche Diagnose.",
-    14,
-    215
-  );
-
-  pdf.save(
-    `harnelyzer-report-${Date.now()}.pdf`
-  );
-}
+  return { create };
+})();
