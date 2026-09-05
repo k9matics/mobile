@@ -106,6 +106,48 @@ button {
   outline: none;
 }
 
+header,
+.setup-panel label,
+.glass-box,
+.chart-container,
+.analysis-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+header::after,
+.setup-panel label::after,
+.glass-box::after,
+.chart-container::after,
+.analysis-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.012) 0px,
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 9px
+    );
+  opacity: 0.24;
+}
+
+header::before,
+.chart-container::before,
+.analysis-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(0,234,255,0.08) 0%, transparent 32%),
+    radial-gradient(circle at 100% 100%, rgba(109,123,61,0.07) 0%, transparent 28%);
+  opacity: 0.75;
+}
+
 header {
   display: flex;
   align-items: center;
@@ -148,15 +190,29 @@ h1 {
 
 .btn,
 .btn-action {
-  min-height: 28px;
-  padding: 4px 8px;
-  color: #f5fbff;
+  position: relative;
+  min-height: 29px;
+  padding: 4px 10px;
+  color: #eef7fb;
   font-size: 0.68rem;
+  letter-spacing: 0.45px;
   white-space: nowrap;
-  border-radius: 999px;
   border: 1px solid rgba(0, 234, 255, 0.16);
-  background: linear-gradient(180deg, #27313c 0%, #131a21 100%);
-  box-shadow: var(--shadow-button);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #323b46 0%, #1b2228 45%, #11161a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -1px 0 rgba(0,0,0,0.34),
+    inset 0 0 10px rgba(0,0,0,0.08),
+    0 6px 14px rgba(0,0,0,0.28);
   transition:
     transform 0.08s ease,
     box-shadow 0.12s ease,
@@ -164,62 +220,100 @@ h1 {
     filter 0.12s ease;
 }
 
+.btn::before,
+.btn-action::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 3px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.14) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0.85;
+}
+
 .btn:hover,
 .btn-action:hover {
   border-color: rgba(0, 234, 255, 0.3);
   box-shadow:
-    var(--shadow-button),
-    0 0 12px rgba(0, 234, 255, 0.08);
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -1px 0 rgba(0,0,0,0.34),
+    inset 0 0 10px rgba(0,0,0,0.08),
+    0 0 0 1px rgba(0,234,255,0.05),
+    0 0 12px rgba(0,234,255,0.08),
+    0 6px 16px rgba(0,0,0,0.28);
 }
 
 .btn:active,
 .btn-action:active {
-  transform: translateY(1px) scale(0.98);
+  transform: translateY(1px) scale(0.985);
   box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.28),
-    0 2px 6px rgba(0, 0, 0, 0.2);
+    inset 0 2px 3px rgba(0,0,0,0.28),
+    inset 0 -1px 0 rgba(255,255,255,0.02),
+    0 2px 6px rgba(0,0,0,0.22);
 }
 
 .btn-connect {
   background:
-    linear-gradient(180deg, #7d8d49 0%, #55652f 54%, #39451f 100%);
-  border-color: rgba(173, 198, 97, 0.34);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #87984d 0%, #657836 48%, #414e23 100%);
+  border-color: rgba(182, 211, 97, 0.34);
   color: #fbfff0;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
-}
-
-.btn-connect:hover {
-  filter: brightness(1.05);
-  box-shadow:
-    var(--shadow-button),
-    0 0 12px rgba(109, 123, 61, 0.18);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.3);
 }
 
 .btn-connect.connected {
   background:
-    linear-gradient(180deg, #2a6f5d 0%, #18483c 58%, #102f28 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #2d7360 0%, #1d5144 50%, #13362e 100%);
   border-color: rgba(0, 234, 255, 0.34);
   color: #eaffff;
-  box-shadow:
-    var(--shadow-button),
-    0 0 14px rgba(0, 234, 255, 0.14);
 }
 
 .btn-calib {
   color: #f7f0d0;
   background:
-    linear-gradient(180deg, #6f6227 0%, #493f16 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #7b6d2d 0%, #584a18 48%, #3a3010 100%);
   border-color: rgba(215, 178, 58, 0.26);
 }
 
 .btn-calib.ready {
   color: #fff8d8;
   background:
-    linear-gradient(180deg, #8b7830 0%, #5e4f18 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #958138 0%, #6a591d 50%, #473b12 100%);
   border-color: rgba(255, 213, 86, 0.34);
-  box-shadow:
-    var(--shadow-button),
-    0 0 12px rgba(215, 178, 58, 0.16);
 }
 
 .setup-panel {
@@ -240,7 +334,10 @@ h1 {
     linear-gradient(180deg, rgba(17, 22, 28, 0.9) 0%, rgba(10, 13, 17, 0.94) 100%);
   border: 1px solid rgba(0, 234, 255, 0.08);
   border-radius: 4px;
-  box-shadow: var(--shadow-panel);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 0 0 1px rgba(255,255,255,0.015);
 }
 
 .setup-panel select,
@@ -268,43 +365,68 @@ h1 {
   font-size: 0.92rem;
   letter-spacing: 1px;
   color: #f8ffe8;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.3);
   background:
-    linear-gradient(180deg, #6e7d41 0%, #4f5f2e 50%, #34401d 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #77894a 0%, #566731 48%, #384520 100%);
   border-color: rgba(173, 198, 97, 0.34);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
-}
-
-.btn-measure:hover {
-  filter: brightness(1.05);
 }
 
 .btn-measure.active {
   color: #fff2f5;
   background:
-    linear-gradient(180deg, #b3374f 0%, #872339 48%, #5a1627 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #c23e58 0%, #96273f 48%, #691928 100%);
   border-color: rgba(255, 103, 134, 0.38);
   box-shadow:
-    var(--shadow-button),
-    0 0 14px rgba(162, 38, 63, 0.18);
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -1px 0 rgba(0,0,0,0.34),
+    inset 0 0 10px rgba(0,0,0,0.08),
+    0 0 0 1px rgba(162,38,63,0.08),
+    0 0 14px rgba(162,38,63,0.18),
+    0 6px 16px rgba(0,0,0,0.3);
 }
 
 .btn-action {
   flex: 1;
-  padding: 4px 2px;
+  padding: 4px 4px;
   color: #c7d1d9;
   background:
-    linear-gradient(180deg, #232a33 0%, #121820 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #323b46 0%, #1b2228 45%, #11161a 100%);
   border-color: rgba(0, 234, 255, 0.12);
 }
 
 .btn-action.active {
   color: #ecfdff;
   background:
-    linear-gradient(180deg, #1b7283 0%, #114d58 100%);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    linear-gradient(180deg, #23788a 0%, #165766 48%, #103a44 100%);
   border-color: rgba(0, 234, 255, 0.34);
-  box-shadow:
-    var(--shadow-button),
-    0 0 14px rgba(0, 234, 255, 0.16);
 }
 
 .dashboard {
@@ -348,7 +470,11 @@ h1 {
     linear-gradient(180deg, rgba(19, 24, 30, 0.92) 0%, rgba(10, 13, 17, 0.95) 100%);
   border: 1px solid rgba(0, 234, 255, 0.08);
   border-radius: 4px;
-  box-shadow: var(--shadow-panel);
+  box-shadow:
+    0 8px 18px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 -1px 0 rgba(0,0,0,0.18),
+    inset 0 0 0 1px rgba(0,234,255,0.03);
 }
 
 .kpi-title {
@@ -496,7 +622,10 @@ h1 {
     linear-gradient(180deg, rgba(11, 14, 18, 0.96) 0%, rgba(7, 9, 12, 0.96) 100%);
   border: 1px solid rgba(0, 234, 255, 0.1);
   border-radius: 4px;
-  box-shadow: var(--shadow-panel);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 0 0 1px rgba(255,255,255,0.015);
 }
 
 .chart-header {
@@ -532,7 +661,10 @@ h1 {
     linear-gradient(180deg, rgba(17, 22, 28, 0.9) 0%, rgba(10, 13, 17, 0.94) 100%);
   border: 1px solid rgba(0, 234, 255, 0.08);
   border-radius: 4px;
-  box-shadow: var(--shadow-panel);
+  box-shadow:
+    0 10px 24px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 0 0 1px rgba(255,255,255,0.015);
 }
 
 .analysis-row {
