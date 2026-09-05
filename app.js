@@ -376,7 +376,11 @@ function stopMeasurement() {
 
   el.btnMeasure.classList.remove("active");
 
-  status("MESSUNG BEENDET");
+  if (connected) {
+    status("K9MATICS VERBUNDEN");
+  } else {
+    status("MESSUNG BEENDET");
+  }
 }
 
 function demoData() {
@@ -418,6 +422,8 @@ async function connectSensor() {
       "VERBUNDEN";
 
     el.btnConnect.classList.add("connected");
+
+    status("K9MATICS VERBUNDEN");
   } catch (error) {
     status(`FEHLER: ${error.message}`);
   }
@@ -430,6 +436,12 @@ async function disconnectSensor() {
 
   el.btnConnect.textContent = "SENSOR";
   el.btnConnect.classList.remove("connected");
+
+  if (measuring) {
+    stopMeasurement();
+  } else {
+    status("SENSOR GETRENNT");
+  }
 }
 
 function saveCsv() {
@@ -629,8 +641,6 @@ el.btnPdf.addEventListener(
 Sensor.on(
   "status",
   text => {
-    status(text);
-
     if (text.includes("GETRENNT")) {
       connected = false;
 
@@ -639,6 +649,10 @@ Sensor.on(
       el.btnConnect.classList.remove(
         "connected"
       );
+    }
+
+    if (!measuring) {
+      status(text);
     }
   }
 );
@@ -653,10 +667,10 @@ Sensor.on(
 Sensor.on(
   "data",
   data => {
-    if (!measuring) {
-      el.debugRaw.textContent =
-        `RAW: ${data.raw}`;
+    el.debugRaw.textContent =
+      `RAW: ${data.raw}`;
 
+    if (!measuring) {
       return;
     }
 
