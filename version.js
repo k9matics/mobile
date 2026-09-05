@@ -1,12 +1,13 @@
-"use strict";
+""use strict";
 
 /*
   HARNELYZER
   Zentrale Projektversion
+  Nur hier Version und Datum ändern.
 */
 
 window.APP_META = {
   name: "HARNELYZER",
-  version: "2.3.2",
-  date: "04.09.2026"
+  version: "2.3.3",
+  date: "05.09.2026"
 };
