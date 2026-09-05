@@ -12,7 +12,6 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
   <link
     href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap"
     rel="stylesheet"
@@ -31,13 +30,8 @@
       <span id="appVersion" class="version">v0</span>
     </h1>
 
-    <button id="btnConnect" class="btn btn-connect">
-      SENSOR
-    </button>
-
-    <button id="btnCalib" class="btn btn-calib">
-      CALIB
-    </button>
+    <button id="btnConnect" class="btn btn-connect">SENSOR</button>
+    <button id="btnCalib" class="btn btn-calib">CALIB</button>
   </header>
 
   <section class="setup-panel">
@@ -64,21 +58,10 @@
   </section>
 
   <section class="controls">
-    <button id="btnMeasure" class="btn btn-measure">
-      MESSUNG STARTEN
-    </button>
-
-    <button id="btnDemo" class="btn-action">
-      DEMO
-    </button>
-
-    <button id="btnSave" class="btn-action">
-      CSV
-    </button>
-
-    <button id="btnPdf" class="btn-action">
-      PDF
-    </button>
+    <button id="btnMeasure" class="btn btn-measure">MESSUNG STARTEN</button>
+    <button id="btnDemo" class="btn-action">DEMO</button>
+    <button id="btnSave" class="btn-action">CSV</button>
+    <button id="btnPdf" class="btn-action">PDF</button>
   </section>
 
   <main class="dashboard">
@@ -109,9 +92,12 @@
     <section id="hudRadar">
       <div class="radar-ring radar-ring-large"></div>
       <div class="radar-ring radar-ring-small"></div>
-      <div class="crosshair-h"></div>
-      <div class="crosshair-v"></div>
-      <div id="radarDot"></div>
+
+      <div id="radarCrosshair" class="radar-crosshair">
+        <div class="crosshair-arm crosshair-arm-h"></div>
+        <div class="crosshair-arm crosshair-arm-v"></div>
+      </div>
+
       <div class="hud-label">HARNESS</div>
       <div id="hudCoords" class="hud-coords">X:0 Y:0</div>
       <div id="tiltValue" class="hud-tilt">TILT: 0°</div>
