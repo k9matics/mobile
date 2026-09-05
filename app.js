@@ -1,683 +1,411 @@
 "use strict";
 
-/*
-  HARNELYZER
-  Hauptsteuerung
-*/
+const App = (() => {
+  const els = {};
+  const state = {
+    connected: false,
+    measuring: false,
+    demo: false,
+    sampleCount: 0,
+    lastPacket: null,
+    samples: [],
+    chart: null,
+    chartMode: "acceleration",
+    demoTimer: null
+  };
 
-const APP_VERSION =
-  window.APP_META?.version || "0.0.0";
+  function byId(id) {
+    return document.getElementById(id);
+  }
 
-const APP_DATE =
-  window.APP_META?.date || "unbekannt";
+  function cacheDom() {
+    els.appName = byId("appName");
+    els.appVersion = byId("appVersion");
+    els.btnConnect = byId("btnConnect");
+    els.btnCalib = byId("btnCalib");
+    els.btnMeasure = byId("btnMeasure");
+    els.btnDemo = byId("btnDemo");
+    els.btnSave = byId("btnSave");
+    els.btnPdf = byId("btnPdf");
+    els.chartMode = byId("chartMode");
 
-const el = {
-  appName: document.getElementById("appName"),
-  appVersion: document.getElementById("appVersion"),
+    els.gaitBadge = byId("gaitBadge");
+    els.kpiGait = byId("kpiGait");
+    els.kpiCadence = byId("kpiCadence");
+    els.kpiRegularity = byId("kpiRegularity");
+    els.kpiAsymmetry = byId("kpiAsymmetry");
 
-  btnConnect: document.getElementById("btnConnect"),
-  btnCalib: document.getElementById("btnCalib"),
-  btnMeasure: document.getElementById("btnMeasure"),
-  btnDemo: document.getElementById("btnDemo"),
-  btnSave: document.getElementById("btnSave"),
-  btnPdf: document.getElementById("btnPdf"),
+    els.motionValue = byId("motionValue");
+    els.rollValue = byId("rollValue");
+    els.pitchValue = byId("pitchValue");
+    els.analysisStatus = byId("analysisStatus");
+    els.debugRaw = byId("debugRaw");
 
-  dogSize: document.getElementById("dogSize"),
-  sensorPosition:
-    document.getElementById("sensorPosition"),
+    els.radarCrosshair = byId("radarCrosshair");
+    els.hudCoords = byId("hudCoords");
+    els.tiltValue = byId("tiltValue");
 
-  gaitBadge: document.getElementById("gaitBadge"),
-  gait: document.getElementById("kpiGait"),
-  cadence: document.getElementById("kpiCadence"),
-  regularity:
-    document.getElementById("kpiRegularity"),
-  asymmetry:
-    document.getElementById("kpiAsymmetry"),
+    els.sensorChart = byId("sensorChart");
+  }
 
-  radarDot: document.getElementById("radarDot"),
-  hudCoords: document.getElementById("hudCoords"),
-  tiltValue: document.getElementById("tiltValue"),
+  function setVersion() {
+    if (!window.APP_META) return;
+    if (els.appName) els.appName.textContent = window.APP_META.name;
+    if (els.appVersion) els.appVersion.textContent = `v${window.APP_META.version}`;
+    document.title = window.APP_META.name;
+  }
 
-  motionValue: document.getElementById("motionValue"),
-  rollValue: document.getElementById("rollValue"),
-  pitchValue: document.getElementById("pitchValue"),
-  analysisStatus:
-    document.getElementById("analysisStatus"),
+  function createChart() {
+    if (!els.sensorChart || !window.Chart) return;
 
-  debugRaw: document.getElementById("debugRaw"),
-  chartMode: document.getElementById("chartMode"),
+    const ctx = els.sensorChart.getContext("2d");
 
-  pullRefreshIndicator:
-    document.getElementById("pullRefreshIndicator"),
-
-  pullRefreshText:
-    document.getElementById("pullRefreshText")
-};
-
-const MAX_CHART_POINTS = 60;
-const MAX_ROWS = 600;
-const UI_INTERVAL = 120;
-const PULL_THRESHOLD = 75;
-
-let measuring = false;
-let demoRunning = false;
-let connected = false;
-
-let currentRows = [];
-let latestData = null;
-let lastUpdate = 0;
-let updateWaiting = false;
-
-let touchStartY = 0;
-let touchCurrentY = 0;
-let pulling = false;
-
-if (el.appName) {
-  el.appName.textContent =
-    window.APP_META?.name || "HARNELYZER";
-}
-
-if (el.appVersion) {
-  el.appVersion.textContent =
-    `v${APP_VERSION} · ${APP_DATE}`;
-}
-
-const chart = new Chart(
-  document.getElementById("sensorChart"),
-  {
-    type: "line",
-
-    data: {
-      labels: [],
-
-      datasets: [
-        {
-          label: "X",
-          data: [],
-          borderColor: "#ffcc00",
-          borderWidth: 1,
-          pointRadius: 0,
-          tension: 0.2
-        },
-
-        {
-          label: "Y",
-          data: [],
-          borderColor: "#ff0055",
-          borderWidth: 1,
-          pointRadius: 0,
-          tension: 0.2
-        },
-
-        {
-          label: "Z",
-          data: [],
-          borderColor: "#00ffcc",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.2
-        },
-
-        {
-          label: "GESAMT",
-          data: [],
-          borderColor: "#ffffff",
-          borderWidth: 1,
-          pointRadius: 0,
-          tension: 0.2
-        }
-      ]
-    },
-
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-
-      plugins: {
-        legend: {
-          labels: {
-            color: "#c9d1d9",
-            boxWidth: 8,
-
-            font: {
-              family: "Share Tech Mono",
-              size: 8
+    state.chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "X",
+            data: [],
+            borderColor: "#00eaff",
+            backgroundColor: "transparent",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.25
+          },
+          {
+            label: "Y",
+            data: [],
+            borderColor: "#d7b23a",
+            backgroundColor: "transparent",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.25
+          },
+          {
+            label: "Z",
+            data: [],
+            borderColor: "#b3374f",
+            backgroundColor: "transparent",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.25
+          }
+        ]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: {
+              color: "#d7dee6",
+              boxWidth: 10
             }
           }
-        }
-      },
-
-      scales: {
-        x: {
-          ticks: {
-            color: "#8b949e",
-            maxTicksLimit: 4
-          },
-
-          grid: {
-            color: "rgba(139,148,158,0.1)"
-          }
         },
-
-        y: {
-          min: -2,
-          max: 2,
-
-          ticks: {
-            color: "#8b949e"
+        scales: {
+          x: {
+            ticks: { color: "#7f8a95", maxTicksLimit: 6 },
+            grid: { color: "rgba(0,234,255,0.08)" }
           },
-
-          grid: {
-            color: "rgba(139,148,158,0.1)"
+          y: {
+            ticks: { color: "#7f8a95" },
+            grid: { color: "rgba(0,234,255,0.08)" }
           }
         }
       }
-    }
-  }
-);
-
-function status(text) {
-  el.gaitBadge.textContent = text;
-  el.analysisStatus.textContent = text;
-}
-
-function resetChart() {
-  chart.data.labels = [];
-
-  chart.data.datasets.forEach(dataset => {
-    dataset.data = [];
-  });
-
-  chart.update("none");
-}
-
-function updateRadar(roll, pitch) {
-  const x = Math.max(
-    -45,
-    Math.min(45, roll)
-  ) * 1.2;
-
-  const y = Math.max(
-    -45,
-    Math.min(45, pitch)
-  ) * 0.8;
-
-  el.radarDot.style.transform =
-    `translate(${x}px, ${y}px)`;
-
-  el.hudCoords.textContent =
-    `X:${x.toFixed(0)} Y:${y.toFixed(0)}`;
-
-  el.tiltValue.textContent =
-    `TILT: ${roll.toFixed(1)}°`;
-}
-
-function addToChart(sample) {
-  const time = new Date(
-    sample.timestamp
-  ).toLocaleTimeString(
-    "de-DE",
-    {
-      minute: "2-digit",
-      second: "2-digit"
-    }
-  );
-
-  chart.data.labels.push(time);
-
-  chart.data.datasets[0].data.push(
-    sample.accX
-  );
-
-  chart.data.datasets[1].data.push(
-    sample.accY
-  );
-
-  chart.data.datasets[2].data.push(
-    sample.accZ
-  );
-
-  chart.data.datasets[3].data.push(
-    sample.totalAcceleration
-  );
-
-  while (
-    chart.data.labels.length >
-    MAX_CHART_POINTS
-  ) {
-    chart.data.labels.shift();
-
-    chart.data.datasets.forEach(dataset => {
-      dataset.data.shift();
     });
   }
 
-  chart.update("none");
-}
+  function pushChartSample(packet) {
+    if (!state.chart) return;
 
-function processData(data) {
-  const accX = Number(data.accX) || 0;
-  const accY = Number(data.accY) || 0;
-  const accZ = Number(data.accZ) || 0;
+    const chart = state.chart;
+    const t = new Date(packet.timestamp).toLocaleTimeString();
 
-  const total =
-    Analysis.magnitude(accX, accY, accZ);
+    let x = packet.accX;
+    let y = packet.accY;
+    let z = packet.accZ;
 
-  const tilt =
-    Analysis.calculateTilt(accX, accY, accZ);
+    if (state.chartMode === "tilt") {
+      const roll = Math.atan2(packet.accY, packet.accZ) * (180 / Math.PI);
+      const pitch = Math.atan2(
+        -packet.accX,
+        Math.sqrt(packet.accY * packet.accY + packet.accZ * packet.accZ)
+      ) * (180 / Math.PI);
 
-  const sample = {
-    timestamp: data.timestamp || Date.now(),
-    accX,
-    accY,
-    accZ,
-
-    gyroX: Number(data.gyroX) || 0,
-    gyroY: Number(data.gyroY) || 0,
-    gyroZ: Number(data.gyroZ) || 0,
-
-    raw: data.raw ?? "",
-    totalAcceleration: total,
-    dynamicAcceleration: Math.abs(total - 1),
-    roll: tilt.roll,
-    pitch: tilt.pitch
-  };
-
-  const result =
-    Analysis.addSample(sample);
-
-  currentRows.push(sample);
-
-  while (currentRows.length > MAX_ROWS) {
-    currentRows.shift();
-  }
-
-  addToChart(sample);
-
-  el.gait.textContent = result.gait;
-  el.cadence.textContent =
-    result.cadence.toFixed(0);
-
-  el.regularity.textContent =
-    `${result.regularity.toFixed(0)}%`;
-
-  el.asymmetry.textContent =
-    `${result.asymmetry.toFixed(0)}%`;
-
-  el.motionValue.textContent =
-    `${sample.dynamicAcceleration.toFixed(2)} g`;
-
-  el.rollValue.textContent =
-    `${sample.roll.toFixed(1)}°`;
-
-  el.pitchValue.textContent =
-    `${sample.pitch.toFixed(1)}°`;
-
-  el.debugRaw.textContent =
-    `RAW: ${sample.raw}`;
-
-  updateRadar(
-    sample.roll,
-    sample.pitch
-  );
-
-  status(result.status);
-}
-
-function queueData(data) {
-  latestData = data;
-
-  const now = Date.now();
-  const elapsed = now - lastUpdate;
-
-  if (elapsed >= UI_INTERVAL) {
-    lastUpdate = now;
-    processData(latestData);
-    return;
-  }
-
-  if (updateWaiting) {
-    return;
-  }
-
-  updateWaiting = true;
-
-  setTimeout(() => {
-    updateWaiting = false;
-    lastUpdate = Date.now();
-
-    if (latestData) {
-      processData(latestData);
+      x = roll;
+      y = pitch;
+      z = 0;
     }
-  }, UI_INTERVAL - elapsed);
-}
 
-function startMeasurement() {
-  measuring = true;
-  currentRows = [];
+    if (state.chartMode === "gyro") {
+      x = packet.gyroX || 0;
+      y = packet.gyroY || 0;
+      z = packet.gyroZ || 0;
+    }
 
-  Analysis.reset();
-  resetChart();
+    chart.data.labels.push(t);
+    chart.data.datasets[0].data.push(x);
+    chart.data.datasets[1].data.push(y);
+    chart.data.datasets[2].data.push(z);
 
-  el.btnMeasure.textContent =
-    "MESSUNG LÄUFT";
+    if (chart.data.labels.length > 40) {
+      chart.data.labels.shift();
+      chart.data.datasets.forEach(ds => ds.data.shift());
+    }
 
-  el.btnMeasure.classList.add("active");
-
-  status("MESSUNG AKTIV");
-}
-
-function stopMeasurement() {
-  measuring = false;
-
-  el.btnMeasure.textContent =
-    "MESSUNG STARTEN";
-
-  el.btnMeasure.classList.remove("active");
-
-  if (connected) {
-    status("K9MATICS VERBUNDEN");
-  } else {
-    status("MESSUNG BEENDET");
-  }
-}
-
-function demoData() {
-  const t = Date.now() / 250;
-
-  return {
-    timestamp: Date.now(),
-    accX: Math.sin(t * 0.7) * 0.25,
-    accY: Math.cos(t * 0.8) * 0.16,
-    accZ: 1 + Math.sin(t * 1.7) * 0.35,
-    gyroX: 0,
-    gyroY: 0,
-    gyroZ: 0,
-    raw: "DEMO"
-  };
-}
-
-function runDemo() {
-  if (!demoRunning) {
-    return;
+    chart.update("none");
   }
 
-  if (!measuring) {
-    startMeasurement();
+  function updateRadar(packet) {
+    if (!els.radarCrosshair) return;
+
+    const x = Math.max(-1.5, Math.min(1.5, packet.accX));
+    const y = Math.max(-1.5, Math.min(1.5, packet.accY));
+    const z = Math.max(-1.5, Math.min(1.5, packet.accZ));
+
+    const px = x * 18;
+    const py = y * -18;
+    const scale = 1 + (z * 0.03);
+
+    els.radarCrosshair.style.transform =
+      `translate(${px}px, ${py}px) scale(${scale.toFixed(3)})`;
+
+    if (els.hudCoords) {
+      els.hudCoords.textContent = `X:${x.toFixed(2)} Y:${y.toFixed(2)}`;
+    }
+
+    const tilt = Math.sqrt(x * x + y * y) * 18;
+    if (els.tiltValue) {
+      els.tiltValue.textContent = `TILT: ${tilt.toFixed(1)}°`;
+    }
   }
 
-  queueData(demoData());
+  function updateMetrics(packet) {
+    const result = window.Analysis
+      ? Analysis.summarize(packet)
+      : {
+          motion: Math.sqrt(
+            packet.accX * packet.accX +
+            packet.accY * packet.accY +
+            packet.accZ * packet.accZ
+          ).toFixed(2),
+          roll: (
+            Math.atan2(packet.accY, packet.accZ) *
+            (180 / Math.PI)
+          ).toFixed(1),
+          pitch: (
+            Math.atan2(
+              -packet.accX,
+              Math.sqrt(packet.accY * packet.accY + packet.accZ * packet.accZ)
+            ) *
+            (180 / Math.PI)
+          ).toFixed(1),
+          gait: "SCHRITT",
+          cadence: 0,
+          regularity: 0,
+          asymmetry: 0
+        };
 
-  setTimeout(runDemo, 130);
-}
+    if (els.motionValue) els.motionValue.textContent = `${result.motion} g`;
+    if (els.rollValue) els.rollValue.textContent = `${result.roll}°`;
+    if (els.pitchValue) els.pitchValue.textContent = `${result.pitch}°`;
+    if (els.analysisStatus) {
+      els.analysisStatus.textContent = state.measuring ? "MESSUNG" : "LIVE";
+    }
 
-async function connectSensor() {
-  try {
-    await Sensor.connect();
-
-    connected = true;
-
-    el.btnConnect.textContent =
-      "VERBUNDEN";
-
-    el.btnConnect.classList.add("connected");
-
-    status("K9MATICS VERBUNDEN");
-  } catch (error) {
-    status(`FEHLER: ${error.message}`);
+    if (els.kpiGait) els.kpiGait.textContent = result.gait;
+    if (els.gaitBadge) {
+      els.gaitBadge.textContent = state.connected ? "K9MATICS VERBUNDEN" : "BEREIT";
+    }
+    if (els.kpiCadence) els.kpiCadence.textContent = String(result.cadence);
+    if (els.kpiRegularity) els.kpiRegularity.textContent = `${result.regularity}%`;
+    if (els.kpiAsymmetry) els.kpiAsymmetry.textContent = `${result.asymmetry}%`;
+    if (els.debugRaw) els.debugRaw.textContent = packet.raw || "NO DATA";
   }
-}
 
-async function disconnectSensor() {
-  await Sensor.disconnect();
+  function handlePacket(packet) {
+    state.lastPacket = packet;
+    state.sampleCount += 1;
+    state.samples.push(packet);
 
-  connected = false;
+    if (state.samples.length > 500) {
+      state.samples.shift();
+    }
 
-  el.btnConnect.textContent = "SENSOR";
-  el.btnConnect.classList.remove("connected");
-
-  if (measuring) {
-    stopMeasurement();
-  } else {
-    status("SENSOR GETRENNT");
+    updateRadar(packet);
+    updateMetrics(packet);
+    pushChartSample(packet);
   }
-}
 
-function saveCsv() {
-  try {
-    Storage.save({
+  function setConnectedUi(connected, label = "SENSOR") {
+    state.connected = connected;
+
+    if (els.btnConnect) {
+      els.btnConnect.classList.toggle("connected", connected);
+      els.btnConnect.textContent = connected ? "VERBUNDEN" : label;
+    }
+
+    if (els.gaitBadge && !state.lastPacket) {
+      els.gaitBadge.textContent = connected ? "K9MATICS VERBUNDEN" : "BEREIT";
+    }
+  }
+
+  async function onConnectClick() {
+    try {
+      if (Sensor.isConnected()) {
+        await Sensor.disconnect();
+        setConnectedUi(false, "SENSOR");
+        return;
+      }
+
+      await Sensor.connect();
+      setConnectedUi(true);
+    } catch (error) {
+      console.error(error);
+      if (els.analysisStatus) els.analysisStatus.textContent = "BT FEHLER";
+      if (els.debugRaw) els.debugRaw.textContent = String(error.message || error);
+    }
+  }
+
+  function onMeasureClick() {
+    state.measuring = !state.measuring;
+
+    if (els.btnMeasure) {
+      els.btnMeasure.classList.toggle("active", state.measuring);
+      els.btnMeasure.textContent = state.measuring ? "MESSUNG STOPPEN" : "MESSUNG STARTEN";
+    }
+
+    if (els.analysisStatus) {
+      els.analysisStatus.textContent = state.measuring ? "MESSUNG" : "LIVE";
+    }
+  }
+
+  function makeDemoPacket() {
+    const t = Date.now() / 280;
+
+    return {
       timestamp: Date.now(),
-      rows: currentRows
+      accX: Math.sin(t) * 0.95,
+      accY: Math.cos(t * 0.9) * 0.75,
+      accZ: 0.95 + Math.sin(t * 1.4) * 0.22,
+      gyroX: Math.sin(t * 1.1) * 18,
+      gyroY: Math.cos(t * 1.3) * 16,
+      gyroZ: Math.sin(t * 0.7) * 12,
+      raw: `X:${(Math.sin(t) * 0.95).toFixed(2)} Y:${(Math.cos(t * 0.9) * 0.75).toFixed(2)} Z:${(0.95 + Math.sin(t * 1.4) * 0.22).toFixed(2)}`
+    };
+  }
+
+  function toggleDemo() {
+    state.demo = !state.demo;
+
+    if (els.btnDemo) {
+      els.btnDemo.classList.toggle("active", state.demo);
+    }
+
+    if (!state.demo) {
+      clearInterval(state.demoTimer);
+      state.demoTimer = null;
+      return;
+    }
+
+    state.demoTimer = setInterval(() => {
+      handlePacket(makeDemoPacket());
+    }, 140);
+  }
+
+  function downloadCsv() {
+    if (!state.samples.length) {
+      if (els.debugRaw) els.debugRaw.textContent = "KEINE DATEN FÜR CSV";
+      return;
+    }
+
+    const header = "timestamp,accX,accY,accZ,gyroX,gyroY,gyroZ,raw";
+    const rows = state.samples.map(sample => {
+      const raw = String(sample.raw || "").replace(/"/g, '""');
+      return [
+        sample.timestamp,
+        sample.accX,
+        sample.accY,
+        sample.accZ,
+        sample.gyroX || 0,
+        sample.gyroY || 0,
+        sample.gyroZ || 0,
+        `"${raw}"`
+      ].join(",");
     });
 
-    Storage.exportCsv(currentRows);
-
-    status("CSV GESPEICHERT");
-  } catch (error) {
-    status(`CSV FEHLER: ${error.message}`);
-  }
-}
-
-async function savePdf() {
-  try {
-    await exportToPDF();
-    status("PDF GESPEICHERT");
-  } catch (error) {
-    status(`PDF FEHLER: ${error.message}`);
-  }
-}
-
-function calibrate() {
-  if (!currentRows.length) {
-    status("ZUERST MESSEN");
-    return;
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "harnelyzer-export.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
-  Analysis.setReference();
-
-  el.btnCalib.textContent = "CALIB OK";
-  el.btnCalib.classList.add("ready");
-
-  status("REFERENZ GESPEICHERT");
-}
-
-function resetPull() {
-  el.pullRefreshIndicator.style.transform =
-    "translateY(0)";
-
-  el.pullRefreshIndicator.classList.remove(
-    "ready"
-  );
-
-  el.pullRefreshText.textContent =
-    "ZUM AKTUALISIEREN ZIEHEN";
-}
-
-document.addEventListener(
-  "touchstart",
-  event => {
-    if (
-      window.scrollY > 0 ||
-      !event.touches.length
-    ) {
+  function exportPdf() {
+    if (window.PDFExport && typeof PDFExport.create === "function") {
+      PDFExport.create({
+        appMeta: window.APP_META,
+        latest: state.lastPacket,
+        summary: state.lastPacket && window.Analysis ? Analysis.summarize(state.lastPacket) : null,
+        samples: state.samples
+      });
       return;
     }
 
-    touchStartY = event.touches[0].clientY;
-    touchCurrentY = touchStartY;
-    pulling = true;
-  },
-  {
-    passive: true
+    if (els.debugRaw) els.debugRaw.textContent = "PDF MODUL FEHLT";
   }
-);
 
-document.addEventListener(
-  "touchmove",
-  event => {
-    if (!pulling || !event.touches.length) {
-      return;
+  function bindEvents() {
+    if (els.btnConnect) els.btnConnect.addEventListener("click", onConnectClick);
+    if (els.btnMeasure) els.btnMeasure.addEventListener("click", onMeasureClick);
+    if (els.btnDemo) els.btnDemo.addEventListener("click", toggleDemo);
+    if (els.btnSave) els.btnSave.addEventListener("click", downloadCsv);
+    if (els.btnPdf) els.btnPdf.addEventListener("click", exportPdf);
+
+    if (els.chartMode) {
+      els.chartMode.addEventListener("change", event => {
+        state.chartMode = event.target.value;
+        if (state.chart) {
+          state.chart.data.labels = [];
+          state.chart.data.datasets.forEach(ds => {
+            ds.data = [];
+          });
+          state.chart.update("none");
+        }
+      });
     }
 
-    touchCurrentY = event.touches[0].clientY;
+    Sensor.on("data", handlePacket);
 
-    const distance =
-      touchCurrentY - touchStartY;
+    Sensor.on("status", status => {
+      if (els.analysisStatus) els.analysisStatus.textContent = status;
+      if (/VERBUNDEN/i.test(status)) setConnectedUi(true);
+      if (/GETRENNT/i.test(status)) setConnectedUi(false, "SENSOR");
+    });
 
-    if (distance <= 0) {
-      resetPull();
-      return;
-    }
-
-    if (distance > 8) {
-      event.preventDefault();
-    }
-
-    el.pullRefreshIndicator.style.transform =
-      `translateY(${Math.min(distance * 0.65, 90)}px)`;
-
-    if (distance >= PULL_THRESHOLD) {
-      el.pullRefreshIndicator.classList.add(
-        "ready"
-      );
-
-      el.pullRefreshText.textContent =
-        "LOS LASSEN ZUM AKTUALISIEREN";
-    }
-  },
-  {
-    passive: false
+    Sensor.on("error", message => {
+      if (els.analysisStatus) els.analysisStatus.textContent = "SENSORFEHLER";
+      if (els.debugRaw) els.debugRaw.textContent = message;
+    });
   }
-);
 
-document.addEventListener(
-  "touchend",
-  () => {
-    if (!pulling) {
-      return;
-    }
-
-    const distance =
-      touchCurrentY - touchStartY;
-
-    pulling = false;
-
-    if (distance >= PULL_THRESHOLD) {
-      el.pullRefreshText.textContent =
-        "AKTUALISIERE...";
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
-
-      return;
-    }
-
-    resetPull();
-  },
-  {
-    passive: true
+  function init() {
+    cacheDom();
+    setVersion();
+    createChart();
+    bindEvents();
+    setConnectedUi(false, "SENSOR");
   }
-);
 
-el.btnConnect.addEventListener(
-  "click",
-  async () => {
-    if (connected) {
-      await disconnectSensor();
-    } else {
-      await connectSensor();
-    }
-  }
-);
+  return { init };
+})();
 
-el.btnMeasure.addEventListener(
-  "click",
-  () => {
-    if (measuring) {
-      stopMeasurement();
-    } else {
-      startMeasurement();
-    }
-  }
-);
-
-el.btnDemo.addEventListener(
-  "click",
-  () => {
-    demoRunning = !demoRunning;
-
-    el.btnDemo.classList.toggle(
-      "active",
-      demoRunning
-    );
-
-    el.btnDemo.textContent = demoRunning
-      ? "DEMO STOP"
-      : "DEMO";
-
-    if (demoRunning) {
-      runDemo();
-    }
-  }
-);
-
-el.btnCalib.addEventListener(
-  "click",
-  calibrate
-);
-
-el.btnSave.addEventListener(
-  "click",
-  saveCsv
-);
-
-el.btnPdf.addEventListener(
-  "click",
-  savePdf
-);
-
-Sensor.on(
-  "status",
-  text => {
-    if (text.includes("GETRENNT")) {
-      connected = false;
-
-      el.btnConnect.textContent = "SENSOR";
-
-      el.btnConnect.classList.remove(
-        "connected"
-      );
-    }
-
-    if (!measuring) {
-      status(text);
-    }
-  }
-);
-
-Sensor.on(
-  "error",
-  text => {
-    status(text);
-  }
-);
-
-Sensor.on(
-  "data",
-  data => {
-    el.debugRaw.textContent =
-      `RAW: ${data.raw}`;
-
-    if (!measuring) {
-      return;
-    }
-
-    queueData(data);
-  }
-);
-
-status(
-  `BEREIT · v${APP_VERSION} · ${APP_DATE}`
-);
+document.addEventListener("DOMContentLoaded", App.init);
