@@ -8,6 +8,6 @@
 
 window.APP_META = {
   name: "HARNELYZER",
-  version: "2.4.0",
+  version: "2.4.1",
   date: "05.09.2026"
 };
