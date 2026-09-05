@@ -2,12 +2,10 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
   >
-
   <meta name="theme-color" content="#050709">
 
   <title>HARNELYZER</title>
@@ -22,51 +20,29 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <div class="hud-noise"></div>
-  <div class="hud-vignette"></div>
-  <div class="hud-grid"></div>
-
   <div id="pullRefreshIndicator">
-    <span id="pullRefreshText">
-      ZUM AKTUALISIEREN ZIEHEN
-    </span>
+    <span id="pullRefreshText">ZUM AKTUALISIEREN ZIEHEN</span>
   </div>
 
-  <header class="hud-panel hud-header">
-    <div class="header-left">
-      <div class="hud-corner"></div>
+  <header>
+    <h1>
+      <span id="appName">HARNELYZER</span>
+      <span id="appVersion" class="version">v0</span>
+    </h1>
 
-      <h1>
-        <span class="title-stack">
-          <span id="appName">HARNELYZER</span>
-          <span class="title-sub">
-            K9 HARNESS MOTION ANALYSIS
-          </span>
-        </span>
+    <button id="btnConnect" class="btn btn-connect">
+      SENSOR
+    </button>
 
-        <span id="appVersion" class="version">
-          LÄDT...
-        </span>
-      </h1>
-    </div>
-
-    <div class="header-actions">
-      <button id="btnConnect" class="btn btn-connect">
-        SENSOR
-      </button>
-
-      <button id="btnCalib" class="btn btn-calib">
-        CALIB
-      </button>
-    </div>
+    <button id="btnCalib" class="btn btn-calib">
+      CALIB
+    </button>
   </header>
 
   <section class="setup-panel">
-    <label class="hud-panel">
+    <label>
       HUNDEGRÖSSE
-
       <select id="dogSize">
         <option value="toy">SEHR KLEIN</option>
         <option value="small">KLEIN</option>
@@ -76,25 +52,13 @@
       </select>
     </label>
 
-    <label class="hud-panel">
+    <label>
       SENSORPOSITION
-
       <select id="sensorPosition">
-        <option value="back" selected>
-          RÜCKEN / GESCHIRR
-        </option>
-
-        <option value="neck">
-          HALSBAND
-        </option>
-
-        <option value="pelvis">
-          BECKEN / KRUPPE
-        </option>
-
-        <option value="leg">
-          BEIN
-        </option>
+        <option value="back" selected>RÜCKEN / GESCHIRR</option>
+        <option value="neck">HALSBAND</option>
+        <option value="pelvis">BECKEN / KRUPPE</option>
+        <option value="leg">BEIN</option>
       </select>
     </label>
   </section>
@@ -118,84 +82,56 @@
   </section>
 
   <main class="dashboard">
-    <div id="gaitBadge" class="gait-badge">
-      BEREIT
-    </div>
+    <div id="gaitBadge" class="gait-badge">BEREIT</div>
 
     <section class="kpi-container">
-      <div class="glass-box hud-cut">
+      <div class="glass-box">
         <div class="kpi-title">GANGART</div>
         <div id="kpiGait" class="kpi-value">—</div>
       </div>
 
-      <div class="glass-box hud-cut">
+      <div class="glass-box">
         <div class="kpi-title">SCHRITTE/MIN</div>
         <div id="kpiCadence" class="kpi-value">0</div>
       </div>
 
-      <div class="glass-box hud-cut">
+      <div class="glass-box">
         <div class="kpi-title">REGELMÄSSIG</div>
         <div id="kpiRegularity" class="kpi-value">0%</div>
       </div>
 
-      <div class="glass-box hud-cut">
+      <div class="glass-box">
         <div class="kpi-title">ASYMMETRIE</div>
         <div id="kpiAsymmetry" class="kpi-value">0%</div>
       </div>
     </section>
 
-    <section id="hudRadar" class="hud-panel hud-cut-large">
-      <div class="radar-sweep"></div>
+    <section id="hudRadar">
       <div class="radar-ring radar-ring-large"></div>
-      <div class="radar-ring radar-ring-mid"></div>
       <div class="radar-ring radar-ring-small"></div>
-
       <div class="crosshair-h"></div>
       <div class="crosshair-v"></div>
-
-      <div class="radar-bracket radar-bracket-tl"></div>
-      <div class="radar-bracket radar-bracket-tr"></div>
-      <div class="radar-bracket radar-bracket-bl"></div>
-      <div class="radar-bracket radar-bracket-br"></div>
-
       <div id="radarDot"></div>
-
-      <div class="hud-label">
-        HARNESS MOTION FIELD
-      </div>
-
-      <div id="hudCoords" class="hud-coords">
-        X:0 Y:0
-      </div>
-
-      <div id="tiltValue" class="hud-tilt">
-        TILT: 0°
-      </div>
+      <div class="hud-label">HARNESS</div>
+      <div id="hudCoords" class="hud-coords">X:0 Y:0</div>
+      <div id="tiltValue" class="hud-tilt">TILT: 0°</div>
     </section>
 
-    <section class="chart-container hud-panel hud-cut-large">
+    <section class="chart-container">
       <div class="chart-header">
         <span>LIVE SENSOR GRAPH</span>
 
         <select id="chartMode">
-          <option value="acceleration">
-            BESCHLEUNIGUNG
-          </option>
-
-          <option value="gyro">
-            GYROSKOP
-          </option>
-
-          <option value="tilt">
-            NEIGUNG
-          </option>
+          <option value="acceleration">BESCHLEUNIGUNG</option>
+          <option value="gyro">GYROSKOP</option>
+          <option value="tilt">NEIGUNG</option>
         </select>
       </div>
 
       <canvas id="sensorChart"></canvas>
     </section>
 
-    <section class="analysis-panel hud-panel hud-cut-large">
+    <section class="analysis-panel">
       <div class="analysis-row">
         <span>BEWEGUNGSINTENSITÄT</span>
         <strong id="motionValue">0.00 g</strong>
@@ -217,9 +153,7 @@
       </div>
     </section>
 
-    <p id="debugRaw" class="hud-panel">
-      NO DATA
-    </p>
+    <p id="debugRaw">NO DATA</p>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
