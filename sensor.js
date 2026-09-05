@@ -5,30 +5,29 @@
   Projektversion: zentral aus version.js
   Datei: sensor.js
 
-  BLE-Sensorverbindung.
-  UUIDs müssen bei Web Bluetooth in Kleinbuchstaben stehen.
+  BLE-Verbindung für K9MATICS
+  Nordic UART Service
 */
 
 const Sensor = (() => {
   const CONFIG = {
+    deviceNamePrefix: "K9MAT",
+
     serviceUuid:
-      "19b10000-e8f2-537e-4f6c-d104768a1214",
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
 
-    characteristicUuid:
-      "19b10001-e8f2-537e-4f6c-d104768a1214",
+    txCharacteristicUuid:
+      "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
 
-    /*
-      true:
-      Zeigt alle sichtbaren BLE-Geräte, auch Geräte
-      ohne Namen. Für deinen aktuellen Test nötig.
-    */
-    showAllDevicesForTest: true
+    rxCharacteristicUuid:
+      "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
   };
 
   let device = null;
   let server = null;
   let service = null;
-  let characteristic = null;
+  let txCharacteristic = null;
+  let rxCharacteristic = null;
 
   let connected = false;
   let notificationsActive = false;
@@ -56,40 +55,44 @@ const Sensor = (() => {
   }
 
   function getDeviceName() {
-    if (device && device.name) {
-      return device.name;
-    }
-
-    return "UNBEKANNTES GERÄT";
+    return device?.name || "UNBEKANNT";
   }
 
-  function parseByte(dataView) {
-    if (dataView.byteLength < 1) {
+  function parseLine(text) {
+    const trimmed = String(text || "").trim();
+
+    if (!trimmed) {
       throw new Error("LEERES DATENPAKET");
     }
 
-    const raw = dataView.getUint8(0);
+    const matches = {
+      x: trimmed.match(/X:s*(-?d+(?:.d+)?)/i),
+      y: trimmed.match(/Y:s*(-?d+(?:.d+)?)/i),
+      z: trimmed.match(/Z:s*(-?d+(?:.d+)?)/i)
+    };
+
+    if (
+      !matches.x ||
+      !matches.y ||
+      !matches.z
+    ) {
+      throw new Error(
+        `UNBEKANNTES FORMAT: ${trimmed}`
+      );
+    }
 
     return {
-      accX: 0,
-      accY: 0,
-
-      /*
-        Byte 0 bis 255 wird für die Anzeige
-        in einen Bereich ungefähr von 0 g bis 2 g
-        übertragen.
-      */
-      accZ: 1 + (raw - 128) / 128,
-
+      accX: Number(matches.x[1]) || 0,
+      accY: Number(matches.y[1]) || 0,
+      accZ: Number(matches.z[1]) || 0,
       gyroX: 0,
       gyroY: 0,
       gyroZ: 0,
-
-      raw
+      raw: trimmed
     };
   }
 
-  function parseCsv(dataView) {
+  function parsePacket(dataView) {
     const bytes = new Uint8Array(
       dataView.buffer,
       dataView.byteOffset,
@@ -100,39 +103,7 @@ const Sensor = (() => {
       .decode(bytes)
       .trim();
 
-    const values = text
-      .split(",")
-      .map(value => Number(value.trim()));
-
-    if (values.length < 3) {
-      throw new Error(
-        "CSV-PAKET BRAUCHT accX,accY,accZ"
-      );
-    }
-
-    return {
-      accX: values[0] || 0,
-      accY: values[1] || 0,
-      accZ: values[2] || 0,
-
-      gyroX: values[3] || 0,
-      gyroY: values[4] || 0,
-      gyroZ: values[5] || 0,
-
-      raw: text
-    };
-  }
-
-  function parsePacket(dataView) {
-    /*
-      1 Byte ist dein bisheriger Firmware-Testmodus.
-      Größere Pakete werden als CSV interpretiert.
-    */
-    if (dataView.byteLength === 1) {
-      return parseByte(dataView);
-    }
-
-    return parseCsv(dataView);
+    return parseLine(text);
   }
 
   function handleNotification(event) {
@@ -168,29 +139,23 @@ const Sensor = (() => {
 
     server = null;
     service = null;
-    characteristic = null;
+    txCharacteristic = null;
+    rxCharacteristic = null;
 
     emit("status", "SENSOR GETRENNT");
   }
 
   async function selectDevice() {
-    if (CONFIG.showAllDevicesForTest) {
-      return navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-
-        optionalServices: [
-          CONFIG.serviceUuid
-        ]
-      });
-    }
-
     return navigator.bluetooth.requestDevice({
       filters: [
         {
-          services: [
-            CONFIG.serviceUuid
-          ]
+          namePrefix:
+            CONFIG.deviceNamePrefix
         }
+      ],
+
+      optionalServices: [
+        CONFIG.serviceUuid
       ]
     });
   }
@@ -205,7 +170,7 @@ const Sensor = (() => {
     if (connected) {
       emit(
         "status",
-        `BEREITS VERBUNDEN: ${getDeviceName()}`
+        `${getDeviceName()} VERBUNDEN`
       );
 
       return;
@@ -231,75 +196,72 @@ const Sensor = (() => {
 
     if (!device.gatt) {
       throw new Error(
-        "GERÄT HAT KEIN GATT-PROFIL"
+        "GERÄT HAT KEIN GATT"
       );
     }
 
     server = await device.gatt.connect();
 
-    emit("status", "SUCHE BLE-SERVICE");
-
     service = await server.getPrimaryService(
       CONFIG.serviceUuid
     );
 
-    emit("status", "SUCHE DATENKANAL");
-
-    characteristic =
+    txCharacteristic =
       await service.getCharacteristic(
-        CONFIG.characteristicUuid
+        CONFIG.txCharacteristicUuid
+      );
+
+    rxCharacteristic =
+      await service.getCharacteristic(
+        CONFIG.rxCharacteristicUuid
       );
 
     if (
-      !characteristic.properties.notify &&
-      !characteristic.properties.indicate
+      !txCharacteristic.properties.notify &&
+      !txCharacteristic.properties.indicate
     ) {
       throw new Error(
-        "DATENKANAL UNTERSTÜTZT KEIN NOTIFY"
+        "TX-CHARACTERISTIC HAT KEIN NOTIFY"
       );
     }
 
-    characteristic.addEventListener(
+    txCharacteristic.addEventListener(
       "characteristicvaluechanged",
       handleNotification
     );
 
-    await characteristic.startNotifications();
+    await txCharacteristic.startNotifications();
 
     notificationsActive = true;
     connected = true;
 
     emit(
       "status",
-      `VERBUNDEN: ${getDeviceName()}`
+      `${getDeviceName()} VERBUNDEN`
     );
   }
 
   async function disconnect() {
     try {
       if (
-        characteristic &&
+        txCharacteristic &&
         notificationsActive
       ) {
-        characteristic.removeEventListener(
+        txCharacteristic.removeEventListener(
           "characteristicvaluechanged",
           handleNotification
         );
 
-        await characteristic.stopNotifications();
+        await txCharacteristic.stopNotifications();
       }
     } catch (error) {
-      console.warn(
-        "NOTIFICATIONS NICHT SAUBER GESTOPPT",
-        error
-      );
+      console.warn(error);
     }
 
     notificationsActive = false;
 
     if (
-      device &&
-      device.gatt &&
+      device?.gatt &&
       device.gatt.connected
     ) {
       device.gatt.disconnect();
@@ -312,10 +274,25 @@ const Sensor = (() => {
     return connected;
   }
 
+  async function send(text) {
+    if (!rxCharacteristic) {
+      throw new Error(
+        "RX-CHARACTERISTIC NICHT VERFÜGBAR"
+      );
+    }
+
+    const payload = new TextEncoder().encode(
+      String(text)
+    );
+
+    await rxCharacteristic.writeValue(payload);
+  }
+
   return {
     on,
     connect,
     disconnect,
-    isConnected
+    isConnected,
+    send
   };
 })();
