@@ -237,6 +237,7 @@ const App = (() => {
       state.samples.shift();
     }
 
+    Storage.setSamples(state.samples);
     updateRadar(packet);
     updateMetrics(packet);
     pushChartSample(packet);
@@ -319,13 +320,15 @@ const App = (() => {
   }
 
   function downloadCsv() {
-    if (!state.samples.length) {
+    const samples = Storage.getSamples();
+
+    if (!samples.length) {
       if (els.debugRaw) els.debugRaw.textContent = "KEINE DATEN FÜR CSV";
       return;
     }
 
     const header = "timestamp,accX,accY,accZ,gyroX,gyroY,gyroZ,raw";
-    const rows = state.samples.map(sample => {
+    const rows = samples.map(sample => {
       const raw = String(sample.raw || "").replace(/"/g, '""');
       return [
         sample.timestamp,
