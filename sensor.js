@@ -2,30 +2,36 @@
 
 /*
   HARNELYZER
-  BLE-Sensorverbindung
+  Projektversion: zentral aus version.js
+  Datei: sensor.js
 
-  Aktuell erwartete UUIDs:
-  Service:
-  19B10000-E8F2-537E-4F6C-D104768A1214
-
-  Characteristic:
-  19B10001-E8F2-537E-4F6C-D104768A1214
+  BLE-Sensorverbindung.
+  UUIDs müssen bei Web Bluetooth in Kleinbuchstaben stehen.
 */
 
 const Sensor = (() => {
   const CONFIG = {
     serviceUuid:
-      "19B10000-E8F2-537E-4F6C-D104768A1214",
+      "19b10000-e8f2-537e-4f6c-d104768a1214",
 
     characteristicUuid:
-      "19B10001-E8F2-537E-4F6C-D104768A1214",
+      "19b10001-e8f2-537e-4f6c-d104768a1214",
 
+    /*
+      true:
+      Zeigt alle sichtbaren BLE-Geräte, auch Geräte
+      ohne Namen. Für deinen aktuellen Test nötig.
+    */
     showAllDevicesForTest: true
   };
 
   let device = null;
+  let server = null;
+  let service = null;
   let characteristic = null;
+
   let connected = false;
+  let notificationsActive = false;
 
   const listeners = {
     data: [],
@@ -34,35 +40,56 @@ const Sensor = (() => {
   };
 
   function on(type, callback) {
+    if (!listeners[type]) {
+      return;
+    }
+
     listeners[type].push(callback);
   }
 
   function emit(type, value) {
-    listeners[type].forEach(callback => {
+    const callbacks = listeners[type] || [];
+
+    callbacks.forEach(callback => {
       callback(value);
     });
   }
 
-  function deviceName() {
-    return device?.name ||
-      "UNBEKANNTES GERÄT";
-  }
-
-  function parsePacket(dataView) {
-    if (dataView.byteLength === 1) {
-      const raw = dataView.getUint8(0);
-
-      return {
-        accX: 0,
-        accY: 0,
-        accZ: 1 + (raw - 128) / 128,
-        gyroX: 0,
-        gyroY: 0,
-        gyroZ: 0,
-        raw
-      };
+  function getDeviceName() {
+    if (device && device.name) {
+      return device.name;
     }
 
+    return "UNBEKANNTES GERÄT";
+  }
+
+  function parseByte(dataView) {
+    if (dataView.byteLength < 1) {
+      throw new Error("LEERES DATENPAKET");
+    }
+
+    const raw = dataView.getUint8(0);
+
+    return {
+      accX: 0,
+      accY: 0,
+
+      /*
+        Byte 0 bis 255 wird für die Anzeige
+        in einen Bereich ungefähr von 0 g bis 2 g
+        übertragen.
+      */
+      accZ: 1 + (raw - 128) / 128,
+
+      gyroX: 0,
+      gyroY: 0,
+      gyroZ: 0,
+
+      raw
+    };
+  }
+
+  function parseCsv(dataView) {
     const bytes = new Uint8Array(
       dataView.buffer,
       dataView.byteOffset,
@@ -73,34 +100,59 @@ const Sensor = (() => {
       .decode(bytes)
       .trim();
 
-    const values = text.split(",").map(
-      value => Number(value.trim())
-    );
+    const values = text
+      .split(",")
+      .map(value => Number(value.trim()));
 
-    if (values.length >= 3) {
-      return {
-        accX: values[0] || 0,
-        accY: values[1] || 0,
-        accZ: values[2] || 0,
-        gyroX: values[3] || 0,
-        gyroY: values[4] || 0,
-        gyroZ: values[5] || 0,
-        raw: text
-      };
+    if (values.length < 3) {
+      throw new Error(
+        "CSV-PAKET BRAUCHT accX,accY,accZ"
+      );
     }
 
-    throw new Error("UNGÜLTIGES DATENPAKET");
+    return {
+      accX: values[0] || 0,
+      accY: values[1] || 0,
+      accZ: values[2] || 0,
+
+      gyroX: values[3] || 0,
+      gyroY: values[4] || 0,
+      gyroZ: values[5] || 0,
+
+      raw: text
+    };
   }
 
-  function handleValue(event) {
+  function parsePacket(dataView) {
+    /*
+      1 Byte ist dein bisheriger Firmware-Testmodus.
+      Größere Pakete werden als CSV interpretiert.
+    */
+    if (dataView.byteLength === 1) {
+      return parseByte(dataView);
+    }
+
+    return parseCsv(dataView);
+  }
+
+  function handleNotification(event) {
     try {
-      const parsed = parsePacket(
+      const values = parsePacket(
         event.target.value
       );
 
       emit("data", {
-        ...parsed,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+
+        accX: values.accX,
+        accY: values.accY,
+        accZ: values.accZ,
+
+        gyroX: values.gyroX,
+        gyroY: values.gyroY,
+        gyroZ: values.gyroZ,
+
+        raw: values.raw
       });
     } catch (error) {
       emit(
@@ -110,11 +162,37 @@ const Sensor = (() => {
     }
   }
 
-  function handleDisconnect() {
+  function handleDisconnected() {
     connected = false;
+    notificationsActive = false;
+
+    server = null;
+    service = null;
     characteristic = null;
 
     emit("status", "SENSOR GETRENNT");
+  }
+
+  async function selectDevice() {
+    if (CONFIG.showAllDevicesForTest) {
+      return navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+
+        optionalServices: [
+          CONFIG.serviceUuid
+        ]
+      });
+    }
+
+    return navigator.bluetooth.requestDevice({
+      filters: [
+        {
+          services: [
+            CONFIG.serviceUuid
+          ]
+        }
+      ]
+    });
   }
 
   async function connect() {
@@ -124,82 +202,120 @@ const Sensor = (() => {
       );
     }
 
+    if (connected) {
+      emit(
+        "status",
+        `BEREITS VERBUNDEN: ${getDeviceName()}`
+      );
+
+      return;
+    }
+
     emit("status", "GERÄT AUSWÄHLEN");
 
-    if (CONFIG.showAllDevicesForTest) {
-      device =
-        await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
+    device = await selectDevice();
 
-          optionalServices: [
-            CONFIG.serviceUuid
-          ]
-        });
-    } else {
-      device =
-        await navigator.bluetooth.requestDevice({
-          filters: [
-            {
-              services: [
-                CONFIG.serviceUuid
-              ]
-            }
-          ]
-        });
+    if (!device) {
+      throw new Error("KEIN GERÄT AUSGEWÄHLT");
     }
 
     device.addEventListener(
       "gattserverdisconnected",
-      handleDisconnect
+      handleDisconnected
     );
 
     emit(
       "status",
-      `VERBINDE: ${deviceName()}`
+      `VERBINDE: ${getDeviceName()}`
     );
 
-    const server =
-      await device.gatt.connect();
-
-    const service =
-      await server.getPrimaryService(
-        CONFIG.serviceUuid
+    if (!device.gatt) {
+      throw new Error(
+        "GERÄT HAT KEIN GATT-PROFIL"
       );
+    }
+
+    server = await device.gatt.connect();
+
+    emit("status", "SUCHE BLE-SERVICE");
+
+    service = await server.getPrimaryService(
+      CONFIG.serviceUuid
+    );
+
+    emit("status", "SUCHE DATENKANAL");
 
     characteristic =
       await service.getCharacteristic(
         CONFIG.characteristicUuid
       );
 
+    if (
+      !characteristic.properties.notify &&
+      !characteristic.properties.indicate
+    ) {
+      throw new Error(
+        "DATENKANAL UNTERSTÜTZT KEIN NOTIFY"
+      );
+    }
+
     characteristic.addEventListener(
       "characteristicvaluechanged",
-      handleValue
+      handleNotification
     );
 
     await characteristic.startNotifications();
 
+    notificationsActive = true;
     connected = true;
 
     emit(
       "status",
-      `VERBUNDEN: ${deviceName()}`
+      `VERBUNDEN: ${getDeviceName()}`
     );
   }
 
   async function disconnect() {
+    try {
+      if (
+        characteristic &&
+        notificationsActive
+      ) {
+        characteristic.removeEventListener(
+          "characteristicvaluechanged",
+          handleNotification
+        );
+
+        await characteristic.stopNotifications();
+      }
+    } catch (error) {
+      console.warn(
+        "NOTIFICATIONS NICHT SAUBER GESTOPPT",
+        error
+      );
+    }
+
+    notificationsActive = false;
+
     if (
-      device?.gatt &&
+      device &&
+      device.gatt &&
       device.gatt.connected
     ) {
       device.gatt.disconnect();
     }
 
-    handleDisconnect();
+    handleDisconnected();
+  }
+
+  function isConnected() {
+    return connected;
   }
 
   return {
     on,
     connect,
-    disconnect
+    disconnect,
+    isConnected
   };
 })();
