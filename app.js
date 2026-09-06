@@ -266,7 +266,7 @@ const App = (() => {
     const roles = Analysis.getSupportedSensorRoles();
 
     els.sensorSlots.innerHTML = roles
-      .filter(role => role.id === "back-main" || role.id === "pelvis" || role.id === "front-left")
+      .filter(role => role.id === "back-main")
       .map(role => {
         const isPrimary = role.id === getSelectedRole();
         const isConnected = state.connected && isPrimary;
