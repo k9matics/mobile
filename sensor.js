@@ -31,6 +31,8 @@ const Sensor = (() => {
   let notificationsActive = false;
   let lineBuffer = "";
   let activeRole = CONFIG.primaryRole;
+  let autoWatchDevice = null;
+  let autoWatching = false;
 
   const listeners = {
     data: [],
@@ -188,11 +190,9 @@ const Sensor = (() => {
     emit("status", "SENSOR GETRENNT");
   }
 
-  async function connect(options = {}) {
-    if (!navigator.bluetooth) {
-      throw new Error(
-        "WEB BLUETOOTH NICHT VERFÜGBAR. BITTE CHROME ODER EDGE NUTZEN."
-      );
+  async function connectToDevice(targetDevice, options = {}) {
+    if (!targetDevice?.gatt) {
+      throw new Error("GERÄT HAT KEINE BLUETOOTH-GATT-VERBINDUNG");
     }
 
     if (connected) {
@@ -200,18 +200,8 @@ const Sensor = (() => {
       return getInfo();
     }
 
-    activeRole = String(options.role || CONFIG.primaryRole);
-
-    emit("status", "SENSOR AUSWÄHLEN");
-
-    device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: [CONFIG.serviceUuid]
-    });
-
-    if (!device?.gatt) {
-      throw new Error("GERÄT HAT KEINE BLUETOOTH-GATT-VERBINDUNG");
-    }
+    activeRole = String(options.role || activeRole || CONFIG.primaryRole);
+    device = targetDevice;
 
     device.addEventListener(
       "gattserverdisconnected",
@@ -250,6 +240,104 @@ const Sensor = (() => {
     emit("status", `${getDeviceName()} VERBUNDEN`);
 
     return getInfo();
+  }
+
+  async function connect(options = {}) {
+    if (!navigator.bluetooth) {
+      throw new Error(
+        "WEB BLUETOOTH NICHT VERFÜGBAR. BITTE CHROME ODER EDGE NUTZEN."
+      );
+    }
+
+    if (connected) {
+      emit("status", `${getDeviceName()} VERBUNDEN`);
+      return getInfo();
+    }
+
+    activeRole = String(options.role || CONFIG.primaryRole);
+
+    emit("status", "SENSOR AUSWÄHLEN");
+
+    const picked = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [CONFIG.serviceUuid]
+    });
+
+    return connectToDevice(picked, { role: activeRole });
+  }
+
+  async function onAutoAdvertisement() {
+    if (connected || !autoWatchDevice) return;
+
+    try {
+      await connectToDevice(autoWatchDevice, { role: activeRole });
+    } catch (error) {
+      console.warn("AUTOMATISCHE VERBINDUNG FEHLGESCHLAGEN", error);
+    }
+  }
+
+  /*
+    Versucht im Hintergrund, ohne Geräteauswahl-Dialog, eine Verbindung
+    zu einem bereits gekoppelten Sensor herzustellen:
+    1. Ist der Sensor schon an und in Reichweite, verbindet sich die App sofort.
+    2. Ist er aus, wartet sie auf sein Bluetooth-Werbepaket ("watchAdvertisements")
+       und verbindet sich automatisch, sobald er eingeschaltet wird.
+    Erfordert, dass der Sensor zuvor mindestens einmal über connect() gekoppelt wurde
+    und der Browser Web Bluetooth "Persistent Permissions" unterstützt (Chrome/Edge).
+  */
+  async function tryAutoReconnect(options = {}) {
+    if (!navigator.bluetooth || typeof navigator.bluetooth.getDevices !== "function") {
+      return { ok: false, reason: "unsupported" };
+    }
+
+    if (connected) {
+      return { ok: true, reason: "already-connected" };
+    }
+
+    activeRole = String(options.role || activeRole || CONFIG.primaryRole);
+
+    let knownDevices = [];
+
+    try {
+      knownDevices = await navigator.bluetooth.getDevices();
+    } catch (error) {
+      console.warn("GEKOPPELTE SENSOREN ABRUFEN FEHLGESCHLAGEN", error);
+      return { ok: false, reason: "error" };
+    }
+
+    if (!knownDevices.length) {
+      return { ok: false, reason: "no-known-device" };
+    }
+
+    const target =
+      knownDevices.find(candidate => candidate.name === CONFIG.deviceName) ||
+      knownDevices[0];
+
+    try {
+      await connectToDevice(target, { role: activeRole });
+      return { ok: true, reason: "connected" };
+    } catch (error) {
+      // Sensor vermutlich noch ausgeschaltet oder außer Reichweite.
+    }
+
+    if (typeof target.watchAdvertisements !== "function") {
+      return { ok: false, reason: "no-watch-support" };
+    }
+
+    if (!autoWatching || autoWatchDevice !== target) {
+      autoWatchDevice = target;
+      target.addEventListener("advertisementreceived", onAutoAdvertisement);
+    }
+
+    try {
+      await target.watchAdvertisements();
+      autoWatching = true;
+      emit("status", "WARTE AUF SENSOR …");
+      return { ok: true, reason: "watching" };
+    } catch (error) {
+      console.warn("WATCH ADVERTISEMENTS FEHLGESCHLAGEN", error);
+      return { ok: false, reason: "watch-error" };
+    }
   }
 
   async function disconnect() {
@@ -364,6 +452,7 @@ const Sensor = (() => {
     calibrate,
     isConnected,
     getInfo,
-    getSupportedRoles
+    getSupportedRoles,
+    tryAutoReconnect
   };
 })();
