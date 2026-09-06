@@ -1607,18 +1607,6 @@ h1 {
     grid-column: 1 / -1;
   }
 
-  .sensor-slots {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .sensor-slot {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .sensor-state {
-    grid-column: 2;
-  }
-
   .score-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
