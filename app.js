@@ -102,6 +102,8 @@ const App = (() => {
     els.hudCoords = byId("hudCoords");
     els.tiltValue = byId("tiltValue");
     els.scene3dCanvas = byId("scene3dCanvas");
+    els.scene3dHomeSlot = byId("scene3dHomeSlot");
+    els.resultScene3dSlot = byId("resultScene3dSlot");
 
     els.cameraDialog = byId("cameraDialog");
     els.cameraPreview = byId("cameraPreview");
@@ -815,11 +817,22 @@ const App = (() => {
     }
   }
 
+  function moveScene3dInto(target) {
+    if (!els.scene3dCanvas || !target || els.scene3dCanvas.parentElement === target) return;
+    target.appendChild(els.scene3dCanvas);
+    window.Scene3D?.onReparent();
+  }
+
+  function restoreScene3dHome() {
+    moveScene3dInto(els.scene3dHomeSlot);
+  }
+
   function openResultDialog() {
     renderResultDialog();
 
     if (els.resultDialog && typeof els.resultDialog.showModal === "function" && !els.resultDialog.open) {
       els.resultDialog.showModal();
+      moveScene3dInto(els.resultScene3dSlot);
     }
   }
 
@@ -1283,7 +1296,8 @@ const App = (() => {
           reference,
           harness,
           comparison,
-          latest: state.latestPacket
+          latest: state.latestPacket,
+          radarImage: els.resultRadarChart ? els.resultRadarChart.toDataURL("image/png") : null
         });
 
         setText(els.debugRaw, "PDF EXPORT GESTARTET");
@@ -1383,6 +1397,7 @@ const App = (() => {
 
     els.btnOpenResult?.addEventListener("click", openResultDialog);
     els.btnResultClose?.addEventListener("click", closeResultDialog);
+    els.resultDialog?.addEventListener("close", restoreScene3dHome);
     els.btnResultCsv?.addEventListener("click", downloadCsv);
     els.btnResultPdf?.addEventListener("click", exportPdf);
 
