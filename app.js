@@ -16,9 +16,7 @@ const App = (() => {
     sessionTimer: null,
     activeStartedAt: null,
     latestPacket: null,
-    chart: null,
     resultChart: null,
-    chartMode: "acceleration",
     calibrationRunning: false,
     cameraStream: null,
     mediaRecorder: null,
@@ -50,7 +48,6 @@ const App = (() => {
 
     els.dogSize = byId("dogSize");
     els.sensorPosition = byId("sensorPosition");
-    els.chartMode = byId("chartMode");
 
     els.connectionStatus = byId("connectionStatus");
     els.sensorSlots = byId("sensorSlots");
@@ -104,7 +101,7 @@ const App = (() => {
     els.hudRadar = byId("hudRadar");
     els.hudCoords = byId("hudCoords");
     els.tiltValue = byId("tiltValue");
-    els.sensorChart = byId("sensorChart");
+    els.scene3dCanvas = byId("scene3dCanvas");
 
     els.cameraDialog = byId("cameraDialog");
     els.cameraPreview = byId("cameraPreview");
@@ -131,171 +128,28 @@ const App = (() => {
     document.title = `${window.APP_META.name || "HARNELYZER"} v${window.APP_META.version || "0.2.0"}`;
   }
 
-  function createChart() {
-    if (!els.sensorChart || !window.Chart) return;
-
-    const context = els.sensorChart.getContext("2d");
-
-    state.chart = new Chart(context, {
-      type: "line",
-      data: {
-        labels: [],
-        datasets: [
-          {
-            label: "X",
-            data: [],
-            borderColor: "#e1b927",
-            backgroundColor: "transparent",
-            borderWidth: 1.5,
-            pointRadius: 0,
-            tension: 0.28
-          },
-          {
-            label: "Y",
-            data: [],
-            borderColor: "#d82e61",
-            backgroundColor: "transparent",
-            borderWidth: 1.5,
-            pointRadius: 0,
-            tension: 0.28
-          },
-          {
-            label: "Z",
-            data: [],
-            borderColor: "#00e6cd",
-            backgroundColor: "transparent",
-            borderWidth: 1.6,
-            pointRadius: 0,
-            tension: 0.28
-          }
-        ]
-      },
-      options: {
-        animation: false,
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          intersect: false,
-          mode: "index"
-        },
-        plugins: {
-          legend: {
-            labels: {
-              color: "#b9c2c8",
-              boxWidth: 10,
-              boxHeight: 10,
-              padding: 12,
-              font: {
-                family: "Share Tech Mono",
-                size: 10
-              }
-            }
-          },
-          tooltip: {
-            enabled: false
-          }
-        },
-        scales: {
-          x: {
-            ticks: {
-              color: "#68737b",
-              maxTicksLimit: 5,
-              font: {
-                family: "Share Tech Mono",
-                size: 9
-              }
-            },
-            border: {
-              color: "rgba(112, 128, 137, 0.22)"
-            },
-            grid: {
-              color: "rgba(111, 129, 138, 0.12)"
-            }
-          },
-          y: {
-            ticks: {
-              color: "#68737b",
-              font: {
-                family: "Share Tech Mono",
-                size: 9
-              }
-            },
-            border: {
-              color: "rgba(112, 128, 137, 0.22)"
-            },
-            grid: {
-              color: "rgba(111, 129, 138, 0.12)"
-            }
-          }
-        }
-      }
-    });
+  function initScene3d() {
+    if (!els.scene3dCanvas || !window.Scene3D) return;
+    Scene3D.init(els.scene3dCanvas);
+    Scene3D.setActiveRole(getSelectedRole());
   }
 
-  function clearChart() {
-    if (!state.chart) return;
-
-    state.chart.data.labels = [];
-    state.chart.data.datasets.forEach(dataset => {
-      dataset.data = [];
-    });
-
-    state.chart.update("none");
+  function resetScene3d() {
+    if (!window.Scene3D) return;
+    Scene3D.reset();
   }
 
-  function getChartValues(packet) {
-    const safePacket = Analysis.normalizePacket(packet);
+  function pushScene3dSample(packet) {
+    if (!window.Scene3D) return;
 
-    if (state.chartMode === "gyro") {
-      return [
-        safePacket.gyroX || 0,
-        safePacket.gyroY || 0,
-        safePacket.gyroZ || 0
-      ];
-    }
+    const summary = Analysis.summarize(packet);
 
-    if (state.chartMode === "tilt") {
-      return [
-        Analysis.calcRoll(safePacket),
-        Analysis.calcPitch(safePacket),
-        Analysis.calcDynamicMotion(safePacket)
-      ];
-    }
-
-    return [
-      safePacket.accX,
-      safePacket.accY,
-      safePacket.accZ
-    ];
-  }
-
-  function pushChartSample(packet) {
-    if (!state.chart) return;
-
-    const values = getChartValues(packet);
-    const label = new Date(packet.timestamp || Date.now())
-      .toLocaleTimeString([], {
-        minute: "2-digit",
-        second: "2-digit"
-      });
-
-    state.chart.data.labels.push(label);
-
-    state.chart.data.datasets.forEach((dataset, index) => {
-      dataset.data.push(values[index]);
+    Scene3D.pushSample({
+      role: packet.role || getSelectedRole(),
+      lateral: packet.accX || 0,
+      motion: summary.motion,
+      roll: summary.roll
     });
-
-    const maxSamples = 56;
-
-    if (state.chart.data.labels.length > maxSamples) {
-      state.chart.data.labels.shift();
-
-      state.chart.data.datasets.forEach(dataset => {
-        dataset.data.shift();
-      });
-    }
-
-    state.chart.update("none");
   }
 
   function updateRadar(packet) {
@@ -365,7 +219,7 @@ const App = (() => {
 
     updateRadar(normalized);
     updateLiveMetrics(normalized);
-    pushChartSample(normalized);
+    pushScene3dSample(normalized);
 
     if (!state.measuring) return;
 
@@ -670,7 +524,7 @@ const App = (() => {
     });
 
     state.measuring = true;
-    clearChart();
+    resetScene3d();
     startTimer();
     renderRoutine();
 
@@ -1450,7 +1304,7 @@ const App = (() => {
 
     Storage.clearStudy();
     stopTimer();
-    clearChart();
+    resetScene3d();
     resetScores();
 
     state.latestPacket = null;
@@ -1493,6 +1347,7 @@ const App = (() => {
     }
 
     renderSensorSlots();
+    window.Scene3D?.setActiveRole(getSelectedRole());
 
     if (state.connected) {
       setText(
@@ -1553,11 +1408,6 @@ const App = (() => {
       closeCameraDialog();
     });
 
-    els.chartMode?.addEventListener("change", event => {
-      state.chartMode = event.target.value;
-      clearChart();
-    });
-
     els.dogSize?.addEventListener("change", () => {
       Storage.setDogProfile({ size: getSelectedDogSize() });
     });
@@ -1592,7 +1442,7 @@ const App = (() => {
   function init() {
     cacheDom();
     setVersion();
-    createChart();
+    initScene3d();
 
     Storage.setDogProfile({
       size: getSelectedDogSize()
