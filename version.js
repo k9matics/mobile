@@ -2,6 +2,7 @@
 
 window.APP_META = {
   name: "HARNELYZER",
-  version: "2.5.0",
-  date: "05.09.2026"
+  version: "0.1.0",
+  releaseDate: "2026-09-06",
+  channel: "harness-analysis-routine"
 };

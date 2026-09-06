@@ -1,17 +1,31 @@
 "use strict";
 
+/*
+  HARNELYZER — App Controller v0.1.0
+
+  Ablauf:
+  1. Referenz ohne Geschirr aufnehmen.
+  2. Geschirr-Test A, danach optional B/C aufnehmen.
+  3. Jede Messung wird direkt auf Qualität geprüft.
+  4. Bei bestehender Referenz wird der Geschirrtest verglichen.
+
+  Der Start erfolgt bewusst manuell.
+*/
+
 const App = (() => {
   const els = {};
+
   const state = {
     connected: false,
     measuring: false,
     demo: false,
-    sampleCount: 0,
-    lastPacket: null,
-    samples: [],
+    demoTimer: null,
+    sessionTimer: null,
+    activeStartedAt: null,
+    latestPacket: null,
     chart: null,
     chartMode: "acceleration",
-    demoTimer: null
+    calibrationRunning: false
   };
 
   function byId(id) {
@@ -21,16 +35,53 @@ const App = (() => {
   function cacheDom() {
     els.appName = byId("appName");
     els.appVersion = byId("appVersion");
+
     els.btnConnect = byId("btnConnect");
     els.btnCalib = byId("btnCalib");
-    els.btnMeasure = byId("btnMeasure");
+    els.btnCalibStart = byId("btnCalibStart");
+    els.btnCalibClose = byId("btnCalibClose");
+    els.calibrationDialog = byId("calibrationDialog");
+    els.calibrationHelp = byId("calibrationHelp");
+
+    els.btnStartReference = byId("btnStartReference");
+    els.btnStartHarness = byId("btnStartHarness");
+    els.btnFinishSession = byId("btnFinishSession");
     els.btnDemo = byId("btnDemo");
     els.btnSave = byId("btnSave");
     els.btnPdf = byId("btnPdf");
-    els.btnRefresh = byId("btnRefresh");
+    els.btnResetStudy = byId("btnResetStudy");
+
+    els.dogSize = byId("dogSize");
+    els.sensorPosition = byId("sensorPosition");
     els.chartMode = byId("chartMode");
 
-    els.gaitBadge = byId("gaitBadge");
+    els.connectionStatus = byId("connectionStatus");
+    els.sensorSlots = byId("sensorSlots");
+    els.routineState = byId("routineState");
+    els.stepReference = byId("stepReference");
+    els.stepHarness = byId("stepHarness");
+    els.stepCompare = byId("stepCompare");
+    els.referenceState = byId("referenceState");
+    els.harnessState = byId("harnessState");
+    els.compareState = byId("compareState");
+    els.routineGuide = byId("routineGuide");
+    els.guideTitle = byId("guideTitle");
+    els.guideText = byId("guideText");
+    els.activeSessionLabel = byId("activeSessionLabel");
+    els.sessionTimer = byId("sessionTimer");
+    els.qualityIndicator = byId("qualityIndicator");
+
+    els.comparisonStatus = byId("comparisonStatus");
+    els.scoreFit = byId("scoreFit");
+    els.scoreFitLabel = byId("scoreFitLabel");
+    els.scoreStability = byId("scoreStability");
+    els.scoreStabilityLabel = byId("scoreStabilityLabel");
+    els.scoreMovement = byId("scoreMovement");
+    els.scoreMovementLabel = byId("scoreMovementLabel");
+    els.scoreSymmetry = byId("scoreSymmetry");
+    els.scoreSymmetryLabel = byId("scoreSymmetryLabel");
+    els.resultSummary = byId("resultSummary");
+
     els.kpiGait = byId("kpiGait");
     els.kpiCadence = byId("kpiCadence");
     els.kpiRegularity = byId("kpiRegularity");
@@ -42,10 +93,9 @@ const App = (() => {
     els.analysisStatus = byId("analysisStatus");
     els.debugRaw = byId("debugRaw");
 
-    els.radarCrosshair = byId("radarCrosshair");
+    els.radarDot = byId("radarDot");
     els.hudCoords = byId("hudCoords");
     els.tiltValue = byId("tiltValue");
-
     els.sensorChart = byId("sensorChart");
   }
 
@@ -53,22 +103,22 @@ const App = (() => {
     if (!window.APP_META) return;
 
     if (els.appName) {
-      els.appName.textContent = window.APP_META.name;
+      els.appName.textContent = window.APP_META.name || "HARNELYZER";
     }
 
     if (els.appVersion) {
-      els.appVersion.textContent = `v${window.APP_META.version}`;
+      els.appVersion.textContent = `v${window.APP_META.version || "0.1.0"}`;
     }
 
-    document.title = window.APP_META.name;
+    document.title = `${window.APP_META.name || "HARNELYZER"} v${window.APP_META.version || "0.1.0"}`;
   }
 
   function createChart() {
     if (!els.sensorChart || !window.Chart) return;
 
-    const ctx = els.sensorChart.getContext("2d");
+    const context = els.sensorChart.getContext("2d");
 
-    state.chart = new Chart(ctx, {
+    state.chart = new Chart(context, {
       type: "line",
       data: {
         labels: [],
@@ -76,29 +126,29 @@ const App = (() => {
           {
             label: "X",
             data: [],
-            borderColor: "#00eaff",
+            borderColor: "#e1b927",
             backgroundColor: "transparent",
             borderWidth: 1.5,
             pointRadius: 0,
-            tension: 0.25
+            tension: 0.28
           },
           {
             label: "Y",
             data: [],
-            borderColor: "#d7b23a",
+            borderColor: "#d82e61",
             backgroundColor: "transparent",
             borderWidth: 1.5,
             pointRadius: 0,
-            tension: 0.25
+            tension: 0.28
           },
           {
             label: "Z",
             data: [],
-            borderColor: "#b3374f",
+            borderColor: "#00e6cd",
             backgroundColor: "transparent",
-            borderWidth: 1.5,
+            borderWidth: 1.6,
             pointRadius: 0,
-            tension: 0.25
+            tension: 0.28
           }
         ]
       },
@@ -106,30 +156,57 @@ const App = (() => {
         animation: false,
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: "index"
+        },
         plugins: {
           legend: {
             labels: {
-              color: "#d7dee6",
-              boxWidth: 10
+              color: "#b9c2c8",
+              boxWidth: 10,
+              boxHeight: 10,
+              padding: 12,
+              font: {
+                family: "Share Tech Mono",
+                size: 10
+              }
             }
+          },
+          tooltip: {
+            enabled: false
           }
         },
         scales: {
           x: {
             ticks: {
-              color: "#7f8a95",
-              maxTicksLimit: 6
+              color: "#68737b",
+              maxTicksLimit: 5,
+              font: {
+                family: "Share Tech Mono",
+                size: 9
+              }
+            },
+            border: {
+              color: "rgba(112, 128, 137, 0.22)"
             },
             grid: {
-              color: "rgba(0,234,255,0.08)"
+              color: "rgba(111, 129, 138, 0.12)"
             }
           },
           y: {
             ticks: {
-              color: "#7f8a95"
+              color: "#68737b",
+              font: {
+                family: "Share Tech Mono",
+                size: 9
+              }
+            },
+            border: {
+              color: "rgba(112, 128, 137, 0.22)"
             },
             grid: {
-              color: "rgba(0,234,255,0.08)"
+              color: "rgba(111, 129, 138, 0.12)"
             }
           }
         }
@@ -144,195 +221,648 @@ const App = (() => {
     state.chart.data.datasets.forEach(dataset => {
       dataset.data = [];
     });
+
     state.chart.update("none");
+  }
+
+  function getChartValues(packet) {
+    const safePacket = Analysis.normalizePacket(packet);
+
+    if (state.chartMode === "gyro") {
+      return [
+        safePacket.gyroX || 0,
+        safePacket.gyroY || 0,
+        safePacket.gyroZ || 0
+      ];
+    }
+
+    if (state.chartMode === "tilt") {
+      return [
+        Analysis.calcRoll(safePacket),
+        Analysis.calcPitch(safePacket),
+        Analysis.calcDynamicMotion(safePacket)
+      ];
+    }
+
+    return [
+      safePacket.accX,
+      safePacket.accY,
+      safePacket.accZ
+    ];
   }
 
   function pushChartSample(packet) {
     if (!state.chart) return;
 
-    const chart = state.chart;
-    const t = new Date(packet.timestamp).toLocaleTimeString();
+    const values = getChartValues(packet);
+    const label = new Date(packet.timestamp || Date.now())
+      .toLocaleTimeString([], {
+        minute: "2-digit",
+        second: "2-digit"
+      });
 
-    let x = packet.accX;
-    let y = packet.accY;
-    let z = packet.accZ;
+    state.chart.data.labels.push(label);
 
-    if (state.chartMode === "tilt") {
-      const roll = Math.atan2(packet.accY, packet.accZ) * (180 / Math.PI);
-      const pitch = Math.atan2(
-        -packet.accX,
-        Math.sqrt(packet.accY * packet.accY + packet.accZ * packet.accZ)
-      ) * (180 / Math.PI);
+    state.chart.data.datasets.forEach((dataset, index) => {
+      dataset.data.push(values[index]);
+    });
 
-      x = roll;
-      y = pitch;
-      z = 0;
+    const maxSamples = 56;
+
+    if (state.chart.data.labels.length > maxSamples) {
+      state.chart.data.labels.shift();
+
+      state.chart.data.datasets.forEach(dataset => {
+        dataset.data.shift();
+      });
     }
 
-    if (state.chartMode === "gyro") {
-      x = packet.gyroX || 0;
-      y = packet.gyroY || 0;
-      z = packet.gyroZ || 0;
-    }
-
-    chart.data.labels.push(t);
-    chart.data.datasets[0].data.push(x);
-    chart.data.datasets[1].data.push(y);
-    chart.data.datasets[2].data.push(z);
-
-    if (chart.data.labels.length > 40) {
-      chart.data.labels.shift();
-      chart.data.datasets.forEach(dataset => dataset.data.shift());
-    }
-
-    chart.update("none");
+    state.chart.update("none");
   }
 
   function updateRadar(packet) {
-    if (!els.radarCrosshair) return;
+    const safePacket = Analysis.normalizePacket(packet);
 
-    const x = Math.max(-1.5, Math.min(1.5, packet.accX));
-    const y = Math.max(-1.5, Math.min(1.5, packet.accY));
-    const z = Math.max(-1.5, Math.min(1.5, packet.accZ));
+    const x = Math.max(-1.4, Math.min(1.4, safePacket.accX));
+    const y = Math.max(-1.4, Math.min(1.4, safePacket.accY));
+    const z = Math.max(-1.4, Math.min(1.8, safePacket.accZ));
 
-    const px = x * 18;
-    const py = y * -18;
-    const scale = 1 + z * 0.03;
+    const translateX = x * 54;
+    const translateY = y * -54;
+    const scale = 0.88 + Math.min(0.32, Math.abs(z) * 0.07);
 
-    els.radarCrosshair.style.transform =
-      `translate(${px}px, ${py}px) scale(${scale.toFixed(3)})`;
+    if (els.radarDot) {
+      els.radarDot.style.transform =
+        `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
+
+    const roll = Analysis.calcRoll(safePacket);
+    const pitch = Analysis.calcPitch(safePacket);
+    const tilt = Math.sqrt(roll * roll + pitch * pitch);
 
     if (els.hudCoords) {
       els.hudCoords.textContent = `X:${x.toFixed(2)} Y:${y.toFixed(2)}`;
     }
 
-    const tilt = Math.sqrt(x * x + y * y) * 18;
     if (els.tiltValue) {
       els.tiltValue.textContent = `TILT: ${tilt.toFixed(1)}°`;
     }
   }
 
-  function updateMetrics(packet) {
-    const result = window.Analysis
-      ? Analysis.summarize(packet)
-      : {
-          motion: Math.sqrt(
-            packet.accX * packet.accX +
-            packet.accY * packet.accY +
-            packet.accZ * packet.accZ
-          ).toFixed(2),
-          roll: (
-            Math.atan2(packet.accY, packet.accZ) * (180 / Math.PI)
-          ).toFixed(1),
-          pitch: (
-            Math.atan2(
-              -packet.accX,
-              Math.sqrt(packet.accY * packet.accY + packet.accZ * packet.accZ)
-            ) * (180 / Math.PI)
-          ).toFixed(1),
-          gait: "SCHRITT",
-          cadence: 0,
-          regularity: 0,
-          asymmetry: 0
-        };
-
-    if (els.motionValue) els.motionValue.textContent = `${result.motion} g`;
-    if (els.rollValue) els.rollValue.textContent = `${result.roll}°`;
-    if (els.pitchValue) els.pitchValue.textContent = `${result.pitch}°`;
-
-    if (els.analysisStatus) {
-      els.analysisStatus.textContent = state.measuring ? "MESSUNG" : "LIVE";
-    }
+  function updateLiveMetrics(packet) {
+    const result = Analysis.summarize(packet);
 
     if (els.kpiGait) els.kpiGait.textContent = result.gait;
     if (els.kpiCadence) els.kpiCadence.textContent = String(result.cadence);
     if (els.kpiRegularity) els.kpiRegularity.textContent = `${result.regularity}%`;
     if (els.kpiAsymmetry) els.kpiAsymmetry.textContent = `${result.asymmetry}%`;
 
-    if (els.gaitBadge) {
-      els.gaitBadge.textContent = state.connected ? "K9MATICS VERBUNDEN" : "BEREIT";
+    if (els.motionValue) {
+      els.motionValue.textContent = `${result.motion.toFixed(2)} g`;
+    }
+
+    if (els.rollValue) {
+      els.rollValue.textContent = `${result.roll.toFixed(1)}°`;
+    }
+
+    if (els.pitchValue) {
+      els.pitchValue.textContent = `${result.pitch.toFixed(1)}°`;
     }
 
     if (els.debugRaw) {
-      els.debugRaw.textContent = packet.raw || "NO DATA";
+      els.debugRaw.textContent = packet.raw || "LIVE DATA";
     }
   }
 
   function handlePacket(packet) {
-    state.lastPacket = packet;
-    state.sampleCount += 1;
-    state.samples.push(packet);
+    const normalized = Analysis.normalizePacket(
+      packet,
+      getSelectedRole()
+    );
 
-    if (state.samples.length > 500) {
-      state.samples.shift();
-    }
+    state.latestPacket = normalized;
 
-    if (window.Storage && typeof Storage.setSamples === "function") {
-      Storage.setSamples(state.samples);
-    }
+    updateRadar(normalized);
+    updateLiveMetrics(normalized);
+    pushChartSample(normalized);
 
-    updateRadar(packet);
-    updateMetrics(packet);
-    pushChartSample(packet);
+    if (!state.measuring) return;
+
+    Storage.appendSample(normalized);
+    updateActiveQuality();
   }
 
-  function setConnectedUi(connected, label = "SENSOR") {
+  function getSelectedRole() {
+    return els.sensorPosition?.value || "back-main";
+  }
+
+  function getSelectedDogSize() {
+    return els.dogSize?.value || "medium";
+  }
+
+  function setConnectionUi(connected, label = "OFFLINE") {
     state.connected = connected;
 
     if (els.btnConnect) {
-      els.btnConnect.classList.toggle("connected", connected);
-      els.btnConnect.textContent = connected ? "VERBUNDEN" : label;
+      els.btnConnect.classList.toggle("is-connected", connected);
+      els.btnConnect.textContent = connected ? "VERBUNDEN" : "SENSOR";
     }
 
-    if (els.gaitBadge && !state.lastPacket) {
-      els.gaitBadge.textContent = connected ? "K9MATICS VERBUNDEN" : "BEREIT";
+    if (els.connectionStatus) {
+      els.connectionStatus.textContent = connected ? "ONLINE" : label;
+      els.connectionStatus.classList.toggle("is-online", connected);
+      els.connectionStatus.classList.toggle("is-error", !connected && label !== "OFFLINE");
     }
+
+    renderSensorSlots();
+    renderRoutine();
+  }
+
+  function renderSensorSlots() {
+    if (!els.sensorSlots) return;
+
+    const info = Sensor.getInfo ? Sensor.getInfo() : {};
+    const roles = Analysis.getSupportedSensorRoles();
+
+    els.sensorSlots.innerHTML = roles
+      .filter(role => role.id === "back-main" || role.id === "pelvis" || role.id === "front-left")
+      .map(role => {
+        const isPrimary = role.id === getSelectedRole();
+        const isConnected = state.connected && isPrimary;
+        const stateText = isConnected
+          ? "VERBUNDEN"
+          : role.required
+            ? "BEREIT"
+            : "SPÄTER";
+
+        return `
+          <div class="sensor-slot ${isConnected ? "is-connected" : ""} ${isPrimary ? "is-active" : ""}">
+            <span class="sensor-dot"></span>
+            <span class="sensor-role">${role.name.toUpperCase()}</span>
+            <span class="sensor-state">${stateText}</span>
+          </div>
+        `;
+      })
+      .join("");
+
+    if (state.connected && info.name && els.debugRaw) {
+      els.debugRaw.textContent = `SENSOR: ${info.name} / ROLLE: ${getSelectedRole()}`;
+    }
+  }
+
+  function getRoutineMode() {
+    const active = Storage.getActiveSession();
+
+    if (active?.status === "recording") {
+      return active.type === "reference" ? "recording-reference" : "recording-harness";
+    }
+
+    const reference = Storage.getReference();
+    const latestTest = Storage.getLatestHarnessTest();
+
+    if (!reference) return "reference";
+    if (!latestTest) return "harness";
+    return "compare";
+  }
+
+  function setText(element, value) {
+    if (element) element.textContent = value;
+  }
+
+  function setStepState(element, stateText, active, done) {
+    if (!element) return;
+
+    element.classList.toggle("is-active", active);
+    element.classList.toggle("is-done", done);
+
+    const stateElement = element.querySelector(".step-state");
+    if (stateElement) stateElement.textContent = stateText;
+  }
+
+  function renderRoutine() {
+    const mode = getRoutineMode();
+    const reference = Storage.getReference();
+    const latestTest = Storage.getLatestHarnessTest();
+    const active = Storage.getActiveSession();
+
+    const referenceDone = Boolean(reference);
+    const harnessDone = Boolean(latestTest);
+    const recording = Boolean(active?.status === "recording");
+
+    setStepState(
+      els.stepReference,
+      referenceDone ? "FERTIG" : recording && active?.type === "reference" ? "LÄUFT" : "OFFEN",
+      mode === "reference" || mode === "recording-reference",
+      referenceDone
+    );
+
+    setStepState(
+      els.stepHarness,
+      harnessDone ? "FERTIG" : !referenceDone ? "GESPERRT" : recording && active?.type === "harness" ? "LÄUFT" : "OFFEN",
+      mode === "harness" || mode === "recording-harness",
+      harnessDone
+    );
+
+    setStepState(
+      els.stepCompare,
+      harnessDone ? "BEREIT" : "WARTET",
+      mode === "compare",
+      harnessDone
+    );
+
+    if (mode === "reference") {
+      setText(els.routineState, "SCHRITT 1 / 3");
+      setText(els.guideTitle, "REFERENZ OHNE GESCHIRR");
+      setText(
+        els.guideText,
+        "Befestige den Sensor sicher am Rücken. Lass den Hund 20–40 Sekunden entspannt und natürlich laufen."
+      );
+    }
+
+    if (mode === "recording-reference") {
+      setText(els.routineState, "REFERENZ LÄUFT");
+      setText(els.guideTitle, "REFERENZ WIRD AUFGEZEICHNET");
+      setText(
+        els.guideText,
+        "Normales Tempo genügt. Die App bewertet die Messqualität automatisch und sucht brauchbare Laufphasen."
+      );
+    }
+
+    if (mode === "harness") {
+      setText(els.routineState, "SCHRITT 2 / 3");
+      setText(els.guideTitle, "GESCHIRR ANLEGEN");
+      setText(
+        els.guideText,
+        "Lege jetzt das zu testende Geschirr an. Nutze möglichst dieselbe Strecke, aber der Hund muss nicht exakt gleich laufen."
+      );
+    }
+
+    if (mode === "recording-harness") {
+      setText(els.routineState, "TEST LÄUFT");
+      setText(els.guideTitle, active?.label || "GESCHIRR-TEST");
+      setText(
+        els.guideText,
+        "Lass den Hund wieder natürlich laufen. Wir vergleichen später nur ähnliche und ausreichend ruhige Bewegungsphasen."
+      );
+    }
+
+    if (mode === "compare") {
+      setText(els.routineState, "SCHRITT 3 / 3");
+      setText(els.guideTitle, "VERGLEICH BEREIT");
+      setText(
+        els.guideText,
+        "Referenz und Geschirrtest sind gespeichert. Du kannst Test B oder C starten, um weitere Einstellungen zu vergleichen."
+      );
+    }
+
+    if (els.btnStartReference) {
+      els.btnStartReference.disabled = recording || referenceDone;
+      els.btnStartReference.textContent = referenceDone
+        ? "REFERENZ GESPEICHERT"
+        : "REFERENZ STARTEN";
+    }
+
+    if (els.btnStartHarness) {
+      els.btnStartHarness.disabled = recording || !referenceDone;
+      els.btnStartHarness.textContent = harnessDone
+        ? `TEST ${Storage.getNextHarnessLetter()} STARTEN`
+        : "TEST A STARTEN";
+    }
+
+    if (els.btnFinishSession) {
+      els.btnFinishSession.disabled = !recording;
+    }
+
+    if (!recording) {
+      setText(
+        els.activeSessionLabel,
+        referenceDone
+          ? harnessDone
+            ? "VERGLEICH VERFÜGBAR"
+            : "BEREIT FÜR GESCHIRR-TEST"
+          : "BEREIT FÜR REFERENZ"
+      );
+    }
+
+    if (!referenceDone) {
+      setText(els.comparisonStatus, "REFERENZ AUSSTEHEND");
+    } else if (!harnessDone) {
+      setText(els.comparisonStatus, "TEST A AUSSTEHEND");
+    }
+  }
+
+  function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60)
+      .toString()
+      .padStart(2, "0");
+
+    const seconds = Math.floor(totalSeconds % 60)
+      .toString()
+      .padStart(2, "0");
+
+    return `${minutes}:${seconds}`;
+  }
+
+  function startTimer() {
+    stopTimer();
+    state.activeStartedAt = Date.now();
+
+    const tick = () => {
+      if (!state.activeStartedAt) return;
+
+      const elapsed = (Date.now() - state.activeStartedAt) / 1000;
+      setText(els.sessionTimer, formatTime(elapsed));
+    };
+
+    tick();
+    state.sessionTimer = window.setInterval(tick, 500);
+  }
+
+  function stopTimer() {
+    if (state.sessionTimer) {
+      window.clearInterval(state.sessionTimer);
+      state.sessionTimer = null;
+    }
+
+    state.activeStartedAt = null;
+  }
+
+  function getCurrentSessionAnalysis() {
+    const session = Storage.getActiveSession();
+
+    if (!session) return null;
+    return Analysis.analyzeSession(session);
+  }
+
+  function updateActiveQuality() {
+    const analysis = getCurrentSessionAnalysis();
+
+    if (!analysis?.quality) return;
+
+    const { score, label, advice } = analysis.quality;
+
+    setText(els.qualityIndicator, `QUALITÄT: ${label} ${score}%`);
+    els.qualityIndicator?.classList.toggle("is-good", score >= 75);
+    els.qualityIndicator?.classList.toggle("is-warn", score >= 50 && score < 75);
+    els.qualityIndicator?.classList.toggle("is-bad", score < 50);
+
+    setText(els.activeSessionLabel, `${analysis.label} · ${analysis.metrics.sampleCount} PAKETE`);
+
+    if (els.analysisStatus) {
+      els.analysisStatus.textContent = score >= 50 ? "MESSUNG" : "DATEN PRÜFEN";
+    }
+
+    if (els.debugRaw && score < 50) {
+      els.debugRaw.textContent = advice;
+    }
+  }
+
+  function startSession(type) {
+    if (state.measuring) return;
+
+    if (!state.connected && !state.demo) {
+      setText(els.analysisStatus, "SENSOR VERBINDEN");
+      setText(els.debugRaw, "ERST SENSOR VERBINDEN ODER DEMO STARTEN");
+      return;
+    }
+
+    const isReference = type === "reference";
+    const testLetter = Storage.getNextHarnessLetter();
+
+    Storage.setDogProfile({
+      size: getSelectedDogSize()
+    });
+
+    const session = Storage.startSession({
+      type,
+      label: isReference
+        ? "REFERENZ OHNE GESCHIRR"
+        : `GESCHIRR TEST ${testLetter}`,
+      primaryRole: getSelectedRole(),
+      sensorRoles: [getSelectedRole()],
+      dogSize: getSelectedDogSize(),
+      harnessName: isReference ? "" : `GESCHIRR ${testLetter}`
+    });
+
+    state.measuring = true;
+    clearChart();
+    startTimer();
+    renderRoutine();
+
+    setText(els.analysisStatus, "MESSUNG");
+    setText(els.activeSessionLabel, session.label);
+    setText(els.qualityIndicator, "QUALITÄT: SAMMLE DATEN");
+    setText(
+      els.debugRaw,
+      isReference
+        ? "REFERENZ LÄUFT: OHNE GESCHIRR"
+        : "GESCHIRR-TEST LÄUFT"
+    );
+  }
+
+  function finishSession() {
+    if (!state.measuring) return;
+
+    const active = Storage.getActiveSession();
+    const analysis = active ? Analysis.analyzeSession(active) : null;
+    const finished = Storage.finishActiveSession(analysis);
+
+    state.measuring = false;
+    stopTimer();
+
+    if (!finished || !analysis) {
+      setText(els.analysisStatus, "KEINE DATEN");
+      renderRoutine();
+      return;
+    }
+
+    if (!analysis.usable) {
+      setText(els.analysisStatus, "MESSUNG ZU KURZ");
+      setText(els.debugRaw, analysis.quality.advice);
+      setText(
+        els.resultSummary,
+        "Diese Messung wurde gespeichert, ist für einen belastbaren Vergleich aber noch zu kurz oder zu unruhig."
+      );
+    } else {
+      setText(els.analysisStatus, "MESSUNG GESPEICHERT");
+      setText(els.debugRaw, analysis.summary);
+    }
+
+    renderRoutine();
+    renderComparison();
+
+    if (finished.type === "reference") {
+      setText(
+        els.resultSummary,
+        analysis.usable
+          ? "Referenz gespeichert. Lege nun das Geschirr an und starte Test A."
+          : "Referenz gespeichert, aber Messqualität noch niedrig. Für einen besseren Vergleich bitte Referenz wiederholen."
+      );
+    }
+  }
+
+  function renderScore(valueElement, labelElement, result) {
+    if (!valueElement || !labelElement) return;
+
+    valueElement.textContent = `${result.score}`;
+    labelElement.textContent = result.label;
+
+    valueElement.parentElement?.classList.toggle("is-good", result.score >= 70);
+    valueElement.parentElement?.classList.toggle(
+      "is-warning",
+      result.score >= 55 && result.score < 70
+    );
+    valueElement.parentElement?.classList.toggle("is-danger", result.score < 55);
+  }
+
+  function resetScores() {
+    const values = [
+      [els.scoreFit, els.scoreFitLabel, "REFERENZ ERFORDERLICH"],
+      [els.scoreStability, els.scoreStabilityLabel, "—"],
+      [els.scoreMovement, els.scoreMovementLabel, "—"],
+      [els.scoreSymmetry, els.scoreSymmetryLabel, "—"]
+    ];
+
+    values.forEach(([valueElement, labelElement, label]) => {
+      if (valueElement) valueElement.textContent = "—";
+      if (labelElement) labelElement.textContent = label;
+
+      valueElement?.parentElement?.classList.remove(
+        "is-good",
+        "is-warning",
+        "is-danger"
+      );
+    });
+  }
+
+  function renderComparison() {
+    const reference = Storage.getReference();
+    const harness = Storage.getLatestHarnessTest();
+
+    if (!reference || !harness) {
+      resetScores();
+      return;
+    }
+
+    const comparison = Analysis.compareSessions(reference, harness);
+
+    if (!comparison.ready) {
+      resetScores();
+      setText(els.comparisonStatus, "DATEN PRÜFEN");
+      setText(els.resultSummary, comparison.summary);
+      return;
+    }
+
+    renderScore(els.scoreFit, els.scoreFitLabel, comparison.passform);
+    renderScore(els.scoreStability, els.scoreStabilityLabel, comparison.stability);
+    renderScore(els.scoreMovement, els.scoreMovementLabel, comparison.movement);
+    renderScore(els.scoreSymmetry, els.scoreSymmetryLabel, comparison.symmetry);
+
+    setText(els.comparisonStatus, `TEST ${harness.label.replace("GESCHIRR TEST ", "")} ANALYSIERT`);
+    setText(els.resultSummary, comparison.summary);
   }
 
   async function onConnectClick() {
     try {
       if (Sensor.isConnected()) {
         await Sensor.disconnect();
-        setConnectedUi(false, "SENSOR");
+        setConnectionUi(false, "GETRENNT");
+        setText(els.analysisStatus, "GETRENNT");
         return;
       }
 
-      await Sensor.connect();
-      setConnectedUi(true);
+      setText(els.analysisStatus, "SENSOR WÄHLEN");
+      await Sensor.connect({
+        role: getSelectedRole()
+      });
+
+      setConnectionUi(true);
+      setText(els.analysisStatus, "BEREIT");
     } catch (error) {
       console.error(error);
-      if (els.analysisStatus) els.analysisStatus.textContent = "BT FEHLER";
-      if (els.debugRaw) els.debugRaw.textContent = String(error.message || error);
+      setConnectionUi(false, "FEHLER");
+      setText(els.analysisStatus, "BT FEHLER");
+      setText(els.debugRaw, String(error.message || error));
     }
   }
 
-  function onMeasureClick() {
-    state.measuring = !state.measuring;
-
-    if (els.btnMeasure) {
-      els.btnMeasure.classList.toggle("active", state.measuring);
-      els.btnMeasure.textContent = state.measuring
-        ? "MESSUNG STOPPEN"
-        : "MESSUNG STARTEN";
+  function openCalibrationDialog() {
+    if (!state.connected && !state.demo) {
+      setText(els.analysisStatus, "SENSOR FEHLT");
+      setText(els.debugRaw, "ERST SENSOR VERBINDEN ODER DEMO NUTZEN");
+      return;
     }
 
-    if (els.analysisStatus) {
-      els.analysisStatus.textContent = state.measuring ? "MESSUNG" : "LIVE";
+    if (!els.calibrationDialog) return;
+
+    setText(
+      els.calibrationHelp,
+      "Der Hund sollte ruhig auf ebenem Boden stehen. Erst danach starten."
+    );
+
+    els.calibrationDialog.showModal();
+  }
+
+  async function startCalibration() {
+    if (state.calibrationRunning) return;
+
+    state.calibrationRunning = true;
+
+    if (els.btnCalibStart) {
+      els.btnCalibStart.disabled = true;
+      els.btnCalibStart.textContent = "KALIBRIERE...";
+    }
+
+    setText(els.calibrationHelp, "Bitte Hund und Sensor drei Sekunden ruhig halten.");
+    setText(els.analysisStatus, "KALIBRIERUNG");
+
+    try {
+      if (!state.demo) {
+        await Sensor.calibrate({ role: getSelectedRole() });
+      }
+
+      await new Promise(resolve => window.setTimeout(resolve, 3000));
+
+      setText(els.calibrationHelp, "Kalibrierung abgeschlossen.");
+      setText(els.analysisStatus, "KALIBRIERT");
+      setText(els.debugRaw, `KALIBRIERT: ${getSelectedRole()}`);
+
+      window.setTimeout(() => {
+        if (els.calibrationDialog?.open) {
+          els.calibrationDialog.close();
+        }
+      }, 700);
+    } catch (error) {
+      console.error(error);
+      setText(els.calibrationHelp, `Fehler: ${error.message || error}`);
+      setText(els.analysisStatus, "CAL FEHLER");
+    } finally {
+      state.calibrationRunning = false;
+
+      if (els.btnCalibStart) {
+        els.btnCalibStart.disabled = false;
+        els.btnCalibStart.textContent = "JETZT KALIBRIEREN";
+      }
     }
   }
 
   function makeDemoPacket() {
-    const t = Date.now() / 280;
+    const now = Date.now();
+    const t = now / 360;
+    const cadenceFactor = 1.55;
 
     return {
-      timestamp: Date.now(),
-      accX: Math.sin(t) * 0.95,
-      accY: Math.cos(t * 0.9) * 0.75,
-      accZ: 0.95 + Math.sin(t * 1.4) * 0.22,
-      gyroX: Math.sin(t * 1.1) * 18,
-      gyroY: Math.cos(t * 1.3) * 16,
-      gyroZ: Math.sin(t * 0.7) * 12,
-      raw: `X:${(Math.sin(t) * 0.95).toFixed(2)} Y:${(Math.cos(t * 0.9) * 0.75).toFixed(2)} Z:${(0.95 + Math.sin(t * 1.4) * 0.22).toFixed(2)}`
+      timestamp: now,
+      sensorId: "demo-back-01",
+      role: getSelectedRole(),
+      accX: Math.sin(t * cadenceFactor) * 0.24 + Math.sin(t * 0.37) * 0.04,
+      accY: Math.cos(t * cadenceFactor * 0.92) * 0.20,
+      accZ: 1 + Math.sin(t * cadenceFactor * 2) * 0.32,
+      gyroX: Math.sin(t * 1.3) * 28,
+      gyroY: Math.cos(t * 1.1) * 22,
+      gyroZ: Math.sin(t * 0.85) * 16,
+      packetType: "demo-imu",
+      raw: "DEMO: NATÜRLICHER LAUFZYKLUS"
     };
   }
 
@@ -340,210 +870,247 @@ const App = (() => {
     state.demo = !state.demo;
 
     if (els.btnDemo) {
-      els.btnDemo.classList.toggle("active", state.demo);
+      els.btnDemo.classList.toggle("is-active", state.demo);
       els.btnDemo.textContent = state.demo ? "DEMO AKTIV" : "DEMO";
     }
 
     if (!state.demo) {
-      clearInterval(state.demoTimer);
+      window.clearInterval(state.demoTimer);
       state.demoTimer = null;
+
+      if (!state.connected) {
+        setText(els.analysisStatus, "BEREIT");
+      }
+
       return;
     }
 
-    state.demoTimer = setInterval(() => {
+    setText(els.analysisStatus, "DEMO BEREIT");
+
+    state.demoTimer = window.setInterval(() => {
       handlePacket(makeDemoPacket());
-    }, 140);
+    }, 100);
   }
 
   function downloadCsv() {
-    const samples = window.Storage && typeof Storage.getSamples === "function"
-      ? Storage.getSamples()
-      : [...state.samples];
+    const study = Storage.getStudy();
+    const rows = [];
 
-    if (!samples.length) {
-      if (els.debugRaw) els.debugRaw.textContent = "KEINE DATEN FÜR CSV";
+    const addSessionRows = session => {
+      if (!session?.samples?.length) return;
+
+      session.samples.forEach(sample => {
+        rows.push({
+          sessionId: session.id,
+          sessionType: session.type,
+          sessionLabel: session.label,
+          timestamp: sample.timestamp,
+          sensorId: sample.sensorId,
+          role: sample.role,
+          accX: sample.accX,
+          accY: sample.accY,
+          accZ: sample.accZ,
+          gyroX: sample.gyroX,
+          gyroY: sample.gyroY,
+          gyroZ: sample.gyroZ,
+          raw: sample.raw
+        });
+      });
+    };
+
+    addSessionRows(study.reference);
+    study.harnessTests.forEach(addSessionRows);
+
+    if (rows.length === 0) {
+      setText(els.debugRaw, "KEINE GESPEICHERTEN MESSDATEN");
       return;
     }
 
-    const header = "timestamp,accX,accY,accZ,gyroX,gyroY,gyroZ,raw";
-    const rows = samples.map(sample => {
-      const raw = String(sample.raw || "").replace(/"/g, '""');
-      return [
-        sample.timestamp,
-        sample.accX,
-        sample.accY,
-        sample.accZ,
-        sample.gyroX || 0,
-        sample.gyroY || 0,
-        sample.gyroZ || 0,
-        `"${raw}"`
-      ].join(",");
-    });
+    const header = [
+      "sessionId",
+      "sessionType",
+      "sessionLabel",
+      "timestamp",
+      "sensorId",
+      "role",
+      "accX",
+      "accY",
+      "accZ",
+      "gyroX",
+      "gyroY",
+      "gyroZ",
+      "raw"
+    ];
 
-    const csv = [header, ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const csvRows = rows.map(row =>
+      header
+        .map(column => {
+          const value = String(row[column] ?? "").replace(/"/g, "\"\"");
+          return `"${value}"`;
+        })
+        .join(",")
+    );
+
+    const blob = new Blob(
+      [[header.join(","), ...csvRows].join("\n")],
+      { type: "text/csv;charset=utf-8" }
+    );
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "harnelyzer-export.csv";
-    link.style.display = "none";
-
+    link.download = `harnelyzer-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
+    link.remove();
 
-    setTimeout(() => {
-      link.remove();
-      URL.revokeObjectURL(url);
-    }, 250);
+    window.setTimeout(() => URL.revokeObjectURL(url), 250);
 
-    if (els.debugRaw) {
-      els.debugRaw.textContent = "CSV EXPORT GESTARTET";
-    }
+    setText(els.debugRaw, "CSV EXPORT GESTARTET");
   }
 
   function exportPdf() {
     try {
-      if (window.PDFExport && typeof PDFExport.create === "function") {
-        PDFExport.create({
+      const study = Storage.getStudy();
+      const reference = Storage.getReference();
+      const harness = Storage.getLatestHarnessTest();
+
+      const comparison = reference && harness
+        ? Analysis.compareSessions(reference, harness)
+        : null;
+
+      if (window.PDFExport && typeof window.PDFExport.create === "function") {
+        window.PDFExport.create({
           appMeta: window.APP_META,
-          latest: state.lastPacket,
-          summary: state.lastPacket && window.Analysis
-            ? Analysis.summarize(state.lastPacket)
-            : null,
-          samples: state.samples
+          study,
+          reference,
+          harness,
+          comparison,
+          latest: state.latestPacket
         });
 
-        if (els.debugRaw) {
-          els.debugRaw.textContent = "PDF EXPORT GESTARTET";
-        }
+        setText(els.debugRaw, "PDF EXPORT GESTARTET");
         return;
       }
 
-      if (els.debugRaw) {
-        els.debugRaw.textContent = "PDF MODUL FEHLT";
-      }
+      setText(els.debugRaw, "PDF MODUL NICHT VERFÜGBAR");
     } catch (error) {
       console.error(error);
-      if (els.debugRaw) {
-        els.debugRaw.textContent = `PDF FEHLER: ${error.message || error}`;
-      }
+      setText(els.debugRaw, `PDF FEHLER: ${error.message || error}`);
     }
   }
 
-  async function refreshApp() {
-    if (els.debugRaw) {
-      els.debugRaw.textContent = "AKTUALISIERE...";
+  function resetStudy() {
+    if (state.measuring) {
+      finishSession();
     }
 
-    try {
-      if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          await registration.update();
-        }
-      }
-    } catch (error) {
-      console.warn("SW UPDATE FEHLER", error);
-    }
-
-    const url = new URL(window.location.href);
-    url.searchParams.set("_r", Date.now().toString());
-    window.location.replace(url.toString());
-  }
-
-  function resetSession() {
-    state.sampleCount = 0;
-    state.lastPacket = null;
-    state.samples = [];
-
-    if (window.Storage && typeof Storage.clear === "function") {
-      Storage.clear();
-    }
-
+    Storage.clearStudy();
+    stopTimer();
     clearChart();
+    resetScores();
 
-    if (els.kpiGait) els.kpiGait.textContent = "—";
-    if (els.kpiCadence) els.kpiCadence.textContent = "0";
-    if (els.kpiRegularity) els.kpiRegularity.textContent = "0%";
-    if (els.kpiAsymmetry) els.kpiAsymmetry.textContent = "0%";
+    state.latestPacket = null;
+    state.measuring = false;
 
-    if (els.motionValue) els.motionValue.textContent = "0.00 g";
-    if (els.rollValue) els.rollValue.textContent = "0.0°";
-    if (els.pitchValue) els.pitchValue.textContent = "0.0°";
-
-    if (els.analysisStatus) els.analysisStatus.textContent = "RESET";
-    if (els.debugRaw) els.debugRaw.textContent = "SESSION RESET";
-    if (els.gaitBadge) els.gaitBadge.textContent = state.connected ? "K9MATICS VERBUNDEN" : "BEREIT";
-
-    if (els.radarCrosshair) {
-      els.radarCrosshair.style.transform = "translate(0px, 0px) scale(1)";
+    if (els.radarDot) {
+      els.radarDot.style.transform = "translate(0px, 0px) scale(1)";
     }
 
-    if (els.hudCoords) els.hudCoords.textContent = "X:0 Y:0";
-    if (els.tiltValue) els.tiltValue.textContent = "TILT: 0°";
+    setText(els.hudCoords, "X:0.00 Y:0.00");
+    setText(els.tiltValue, "TILT: 0.0°");
+    setText(els.kpiGait, "—");
+    setText(els.kpiCadence, "0");
+    setText(els.kpiRegularity, "0%");
+    setText(els.kpiAsymmetry, "0%");
+    setText(els.motionValue, "0.00 g");
+    setText(els.rollValue, "0.0°");
+    setText(els.pitchValue, "0.0°");
+    setText(els.analysisStatus, "BEREIT");
+    setText(els.debugRaw, "NEUE STUDIE BEREIT");
+    setText(els.sessionTimer, "00:00");
+    setText(els.qualityIndicator, "QUALITÄT: WARTET");
+    setText(
+      els.resultSummary,
+      "Starte mit einer Referenzmessung ohne Geschirr. Die App vergleicht später nur ausreichend ähnliche Bewegungsphasen."
+    );
+
+    renderRoutine();
+    renderSensorSlots();
+  }
+
+  function onSensorRoleChange() {
+    if (state.measuring) {
+      setText(els.debugRaw, "SENSORROLLE ERST NACH DER MESSUNG ÄNDERN");
+      if (els.sensorPosition && state.latestPacket?.role) {
+        els.sensorPosition.value = state.latestPacket.role;
+      }
+      return;
+    }
+
+    renderSensorSlots();
+
+    if (state.connected) {
+      setText(
+        els.debugRaw,
+        `AKTIVE ROLLE: ${getSelectedRole()} — FÜR NEUE VERBINDUNG ÜBERNEHMEN`
+      );
+    }
   }
 
   function bindEvents() {
-    if (els.btnConnect) {
-      els.btnConnect.addEventListener("click", onConnectClick);
-    }
+    els.btnConnect?.addEventListener("click", onConnectClick);
+    els.btnCalib?.addEventListener("click", openCalibrationDialog);
+    els.btnCalibStart?.addEventListener("click", startCalibration);
 
-    if (els.btnCalib) {
-      els.btnCalib.addEventListener("click", resetSession);
-    }
+    els.btnStartReference?.addEventListener("click", () => {
+      startSession("reference");
+    });
 
-    if (els.btnMeasure) {
-      els.btnMeasure.addEventListener("click", onMeasureClick);
-    }
+    els.btnStartHarness?.addEventListener("click", () => {
+      startSession("harness");
+    });
 
-    if (els.btnDemo) {
-      els.btnDemo.addEventListener("click", toggleDemo);
-    }
+    els.btnFinishSession?.addEventListener("click", finishSession);
+    els.btnDemo?.addEventListener("click", toggleDemo);
+    els.btnSave?.addEventListener("click", downloadCsv);
+    els.btnPdf?.addEventListener("click", exportPdf);
+    els.btnResetStudy?.addEventListener("click", resetStudy);
 
-    if (els.btnSave) {
-      els.btnSave.addEventListener("click", downloadCsv);
-    }
+    els.chartMode?.addEventListener("change", event => {
+      state.chartMode = event.target.value;
+      clearChart();
+    });
 
-    if (els.btnPdf) {
-      els.btnPdf.addEventListener("click", exportPdf);
-    }
+    els.dogSize?.addEventListener("change", () => {
+      Storage.setDogProfile({ size: getSelectedDogSize() });
+    });
 
-    if (els.btnRefresh) {
-      els.btnRefresh.addEventListener("click", refreshApp);
-    }
-
-    if (els.chartMode) {
-      els.chartMode.addEventListener("change", event => {
-        state.chartMode = event.target.value;
-        clearChart();
-      });
-    }
+    els.sensorPosition?.addEventListener("change", onSensorRoleChange);
 
     Sensor.on("data", handlePacket);
 
     Sensor.on("status", status => {
-      if (els.analysisStatus) {
-        els.analysisStatus.textContent = status;
+      const message = String(status || "BEREIT");
+
+      if (/VERBUNDEN/i.test(message) && !/GETRENNT/i.test(message)) {
+        setConnectionUi(true);
       }
 
-      if (/VERBUNDEN/i.test(status)) {
-        setConnectedUi(true);
+      if (/GETRENNT/i.test(message)) {
+        setConnectionUi(false, "GETRENNT");
       }
 
-      if (/GETRENNT/i.test(status)) {
-        setConnectedUi(false, "SENSOR");
+      if (!state.measuring && els.analysisStatus) {
+        els.analysisStatus.textContent = message;
       }
     });
 
     Sensor.on("error", message => {
-      if (els.analysisStatus) {
-        els.analysisStatus.textContent = "SENSORFEHLER";
-      }
-
-      if (els.debugRaw) {
-        els.debugRaw.textContent = message;
-      }
+      setConnectionUi(false, "FEHLER");
+      setText(els.analysisStatus, "SENSOR FEHLER");
+      setText(els.debugRaw, String(message || "UNBEKANNTER SENSORFEHLER"));
     });
   }
 
@@ -551,11 +1118,30 @@ const App = (() => {
     cacheDom();
     setVersion();
     createChart();
+
+    Storage.setDogProfile({
+      size: getSelectedDogSize()
+    });
+
+    Storage.setSensorRoles(
+      Analysis.getSupportedSensorRoles().map(role => ({
+        id: role.id,
+        name: role.name,
+        required: role.required,
+        status: role.status
+      }))
+    );
+
     bindEvents();
-    setConnectedUi(false, "SENSOR");
+    setConnectionUi(false, "OFFLINE");
+    resetScores();
+    renderRoutine();
+    renderSensorSlots();
   }
 
-  return { init };
+  return {
+    init
+  };
 })();
 
 document.addEventListener("DOMContentLoaded", App.init);
