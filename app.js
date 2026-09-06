@@ -1481,6 +1481,10 @@ const App = (() => {
     if (els.hudRadar) {
       els.hudRadar.dataset.level = "stable";
     }
+
+    Sensor.tryAutoReconnect({ role: getSelectedRole() }).catch(error => {
+      console.warn("AUTOMATISCHE SENSORVERBINDUNG FEHLGESCHLAGEN", error);
+    });
   }
 
   return {
