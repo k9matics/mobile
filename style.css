@@ -363,7 +363,6 @@ h1 {
   gap: 0.8rem;
 }
 
-.setup-panel,
 .sensor-panel,
 .routine-panel,
 .score-panel,
@@ -378,7 +377,6 @@ h1 {
   box-shadow: var(--shadow-panel);
 }
 
-.setup-panel::after,
 .sensor-panel::after,
 .routine-panel::after,
 .score-panel::after,
@@ -391,20 +389,12 @@ h1 {
   background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 9px);
 }
 
-.setup-panel,
 .sensor-panel,
 .routine-panel,
 .score-panel,
 .live-panel > * {
   position: relative;
   z-index: 1;
-}
-
-.setup-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-  padding: 0.66rem;
 }
 
 .field {
@@ -1609,11 +1599,7 @@ h1 {
     align-items: start;
   }
 
-  .setup-panel,
-  .sensor-panel {
-    grid-column: span 1;
-  }
-
+  .sensor-panel,
   .routine-panel,
   .score-panel,
   .live-panel,
@@ -1676,10 +1662,6 @@ h1 {
 
   .btn-connect {
     min-width: 5.1rem;
-  }
-
-  .setup-panel {
-    grid-template-columns: 1fr;
   }
 
   .live-kpi span {
