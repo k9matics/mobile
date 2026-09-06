@@ -217,30 +217,34 @@
       </div>
 
       <div class="score-grid">
-        <article class="score-card">
+        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Passform öffnen">
           <span>PASSFORM</span>
           <strong id="scoreFit">—</strong>
           <small id="scoreFitLabel">REFERENZ ERFORDERLICH</small>
         </article>
 
-        <article class="score-card">
+        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Stabilität öffnen">
           <span>STABILITÄT</span>
           <strong id="scoreStability">—</strong>
           <small id="scoreStabilityLabel">—</small>
         </article>
 
-        <article class="score-card">
+        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Laufbild öffnen">
           <span>LAUFBILD</span>
           <strong id="scoreMovement">—</strong>
           <small id="scoreMovementLabel">—</small>
         </article>
 
-        <article class="score-card">
+        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Symmetrie öffnen">
           <span>SYMMETRIE</span>
           <strong id="scoreSymmetry">—</strong>
           <small id="scoreSymmetryLabel">—</small>
         </article>
       </div>
+
+      <button id="btnOpenResult" class="btn btn-secondary result-open-btn" type="button">
+        TESTBERICHT ANZEIGEN
+      </button>
 
       <div id="resultSummary" class="result-summary" aria-live="polite">
         Starte mit einer Referenzmessung ohne Geschirr. Die App vergleicht
@@ -343,14 +347,6 @@
         DEMO
       </button>
 
-      <button id="btnSave" class="btn btn-utility" type="button">
-        CSV
-      </button>
-
-      <button id="btnPdf" class="btn btn-utility" type="button">
-        PDF
-      </button>
-
       <button id="btnResetStudy" class="btn btn-utility btn-danger" type="button">
         NEUSTART
       </button>
@@ -441,6 +437,84 @@
         </button>
         <button id="btnCameraDiscard" class="btn btn-secondary" type="button" disabled>
           AUFNAHME VERWERFEN
+        </button>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog id="resultDialog" class="result-dialog" aria-labelledby="resultDialogTitle">
+    <section class="result-dialog__panel">
+      <header class="result-dialog__header">
+        <div>
+          <p class="eyebrow">TESTBERICHT</p>
+          <h2 id="resultDialogTitle">GESCHIRR-VERGLEICH</h2>
+        </div>
+        <button
+          id="btnResultClose"
+          class="btn btn-secondary result-dialog__close"
+          type="button"
+          aria-label="Testbericht schließen"
+        >
+          SCHLIESSEN
+        </button>
+      </header>
+
+      <div id="resultVerdict" class="result-verdict">
+        Noch keine ausreichenden Daten für einen Vergleich.
+      </div>
+
+      <div class="result-dialog__body">
+        <div class="result-chart">
+          <canvas id="resultRadarChart" aria-label="Vergleichsdiagramm Passform, Stabilität, Laufbild, Symmetrie"></canvas>
+        </div>
+
+        <div class="result-scorelist" id="resultScoreList">
+          <div class="result-scorelist__row" data-score="fit">
+            <span>PASSFORM</span>
+            <strong>—</strong>
+            <small>—</small>
+          </div>
+          <div class="result-scorelist__row" data-score="stability">
+            <span>STABILITÄT</span>
+            <strong>—</strong>
+            <small>—</small>
+          </div>
+          <div class="result-scorelist__row" data-score="movement">
+            <span>LAUFBILD</span>
+            <strong>—</strong>
+            <small>—</small>
+          </div>
+          <div class="result-scorelist__row" data-score="symmetry">
+            <span>SYMMETRIE</span>
+            <strong>—</strong>
+            <small>—</small>
+          </div>
+        </div>
+      </div>
+
+      <table class="result-table" id="resultDetailTable">
+        <thead>
+          <tr>
+            <th>MESSUNG</th>
+            <th>GANGART</th>
+            <th>KADENZ</th>
+            <th>DAUER</th>
+            <th>QUALITÄT</th>
+          </tr>
+        </thead>
+        <tbody id="resultDetailBody">
+          <tr>
+            <td colspan="5">Keine Messdaten vorhanden.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="result-dialog__actions">
+        <button id="btnResultCsv" class="btn btn-utility" type="button">
+          CSV EXPORTIEREN
+        </button>
+        <button id="btnResultPdf" class="btn btn-utility" type="button">
+          PDF EXPORTIEREN
         </button>
       </div>
     </section>
