@@ -172,11 +172,12 @@ window.PDFExport = (() => {
   }
 
   function drawChart(doc, startY) {
-    const canvas = document.getElementById("sensorChart");
-    if (!canvas) return startY;
+    if (!window.Scene3D || typeof window.Scene3D.captureSnapshot !== "function") {
+      return startY;
+    }
 
     try {
-      const imageData = canvas.toDataURL("image/png");
+      const imageData = window.Scene3D.captureSnapshot();
       if (!imageData || imageData === "data:,") {
         return startY;
       }
@@ -189,14 +190,14 @@ window.PDFExport = (() => {
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text("SENSOR-ROHDATEN", 14, y);
+      doc.text("BEWEGUNGSANSICHT (3D-PLATZHALTER)", 14, y);
 
       y += 4;
       doc.addImage(imageData, "PNG", 14, y, 182, 58);
 
       return y + 58;
     } catch (error) {
-      console.warn("CHART PNG FEHLER", error);
+      console.warn("SCENE3D SNAPSHOT FEHLER", error);
       return startY;
     }
   }
