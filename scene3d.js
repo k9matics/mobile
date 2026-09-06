@@ -232,6 +232,23 @@ window.Scene3D = (() => {
     camera.updateProjectionMatrix();
   }
 
+  function attachResizeObserver() {
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      resizeObserver = null;
+    }
+    if (window.ResizeObserver && canvasEl && canvasEl.parentElement) {
+      resizeObserver = new ResizeObserver(() => resizeToContainer());
+      resizeObserver.observe(canvasEl.parentElement);
+    }
+  }
+
+  function onReparent() {
+    if (!ready) return;
+    resizeToContainer();
+    attachResizeObserver();
+  }
+
   function animate() {
     frameHandle = requestAnimationFrame(animate);
     if (controls) controls.update();
@@ -293,11 +310,7 @@ window.Scene3D = (() => {
 
     ready = true;
     resizeToContainer();
-
-    if (window.ResizeObserver && canvas.parentElement) {
-      resizeObserver = new ResizeObserver(() => resizeToContainer());
-      resizeObserver.observe(canvas.parentElement);
-    }
+    attachResizeObserver();
 
     animate();
   }
@@ -326,6 +339,7 @@ window.Scene3D = (() => {
     reset,
     captureSnapshot,
     resizeToContainer,
+    onReparent,
     destroy
   };
 })();
