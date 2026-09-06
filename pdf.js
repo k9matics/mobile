@@ -171,35 +171,56 @@ window.PDFExport = (() => {
     return y + summary.length * 5 + 4;
   }
 
-  function drawChart(doc, startY) {
-    if (!window.Scene3D || typeof window.Scene3D.captureSnapshot !== "function") {
-      return startY;
-    }
-
+  function drawVisualPanel(doc, radarImage, startY) {
+    let scene3dImage = null;
     try {
-      const imageData = window.Scene3D.captureSnapshot();
-      if (!imageData || imageData === "data:,") {
-        return startY;
+      if (window.Scene3D && typeof window.Scene3D.captureSnapshot === "function") {
+        scene3dImage = window.Scene3D.captureSnapshot();
       }
-
-      let y = startY + 4;
-      if (y > 210) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("BEWEGUNGSANSICHT (3D-PLATZHALTER)", 14, y);
-
-      y += 4;
-      doc.addImage(imageData, "PNG", 14, y, 182, 58);
-
-      return y + 58;
     } catch (error) {
       console.warn("SCENE3D SNAPSHOT FEHLER", error);
+      scene3dImage = null;
+    }
+
+    const hasRadar = Boolean(radarImage) && radarImage !== "data:,";
+    const hasScene = Boolean(scene3dImage) && scene3dImage !== "data:,";
+
+    if (!hasRadar && !hasScene) {
       return startY;
     }
+
+    const panelHeight = 66;
+    let y = startY + 4;
+    if (y + panelHeight > 270) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("RADAR & BEWEGUNGSANSICHT (3D-PLATZHALTER)", 14, y);
+    y += 4;
+
+    const panelX = 14;
+    const panelW = 182;
+    const panelY = y;
+    const pad = 4;
+    const innerH = panelHeight - pad * 2;
+
+    doc.setFillColor(9, 12, 12);
+    doc.roundedRect(panelX, panelY, panelW, panelHeight, 2, 2, "F");
+
+    if (hasRadar && hasScene) {
+      const halfW = (panelW - pad * 3) / 2;
+      doc.addImage(radarImage, "PNG", panelX + pad, panelY + pad, halfW, innerH);
+      doc.addImage(scene3dImage, "PNG", panelX + pad * 2 + halfW, panelY + pad, halfW, innerH);
+    } else if (hasRadar) {
+      doc.addImage(radarImage, "PNG", panelX + pad, panelY + pad, panelW - pad * 2, innerH);
+    } else {
+      doc.addImage(scene3dImage, "PNG", panelX + pad, panelY + pad, panelW - pad * 2, innerH);
+    }
+
+    return panelY + panelHeight + 6;
   }
 
   function drawFooter(doc, endY) {
@@ -233,8 +254,8 @@ window.PDFExport = (() => {
 
     drawHeader(doc, meta);
     let y = drawOverview(doc, comparison, referenceSession, harnessSession, 34);
+    y = drawVisualPanel(doc, payload?.radarImage, y);
     y = drawScoreTable(doc, comparison, y);
-    y = drawChart(doc, y);
     drawFooter(doc, y);
 
     const blob = doc.output("blob");
