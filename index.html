@@ -310,7 +310,7 @@
         <span id="hudCoords" class="hud-coords">X:0.00 Y:0.00</span>
       </div>
 
-      <div class="chart-container scene3d-container">
+      <div class="chart-container scene3d-container" id="scene3dHomeSlot">
         <canvas id="scene3dCanvas" aria-label="3D Bewegungsansicht mit Platzhaltermodell"></canvas>
       </div>
 
@@ -461,8 +461,16 @@
       </div>
 
       <div class="result-dialog__body">
-        <div class="result-chart">
-          <canvas id="resultRadarChart" aria-label="Vergleichsdiagramm Passform, Stabilität, Laufbild, Symmetrie"></canvas>
+        <div class="result-visuals">
+          <div class="result-chart">
+            <canvas id="resultRadarChart" aria-label="Vergleichsdiagramm Passform, Stabilität, Laufbild, Symmetrie"></canvas>
+          </div>
+
+          <div
+            class="result-chart result-chart--3d scene3d-container"
+            id="resultScene3dSlot"
+            aria-label="3D Bewegungsansicht mit Platzhaltermodell"
+          ></div>
         </div>
 
         <div class="result-scorelist" id="resultScoreList">
