@@ -17,6 +17,7 @@ const App = (() => {
     activeStartedAt: null,
     latestPacket: null,
     chart: null,
+    resultChart: null,
     chartMode: "acceleration",
     calibrationRunning: false,
     cameraStream: null,
@@ -45,8 +46,6 @@ const App = (() => {
     els.btnStartHarness = byId("btnStartHarness");
     els.btnFinishSession = byId("btnFinishSession");
     els.btnDemo = byId("btnDemo");
-    els.btnSave = byId("btnSave");
-    els.btnPdf = byId("btnPdf");
     els.btnResetStudy = byId("btnResetStudy");
 
     els.dogSize = byId("dogSize");
@@ -79,6 +78,17 @@ const App = (() => {
     els.scoreSymmetry = byId("scoreSymmetry");
     els.scoreSymmetryLabel = byId("scoreSymmetryLabel");
     els.resultSummary = byId("resultSummary");
+    els.scoreCards = Array.from(document.querySelectorAll(".score-card"));
+    els.btnOpenResult = byId("btnOpenResult");
+
+    els.resultDialog = byId("resultDialog");
+    els.resultVerdict = byId("resultVerdict");
+    els.resultRadarChart = byId("resultRadarChart");
+    els.resultScoreList = byId("resultScoreList");
+    els.resultDetailBody = byId("resultDetailBody");
+    els.btnResultClose = byId("btnResultClose");
+    els.btnResultCsv = byId("btnResultCsv");
+    els.btnResultPdf = byId("btnResultPdf");
 
     els.kpiGait = byId("kpiGait");
     els.kpiCadence = byId("kpiCadence");
@@ -713,7 +723,21 @@ const App = (() => {
           ? "Referenz gespeichert. Lege nun das Geschirr an und starte Test A."
           : "Referenz gespeichert, aber Messqualität noch niedrig. Für einen besseren Vergleich bitte Referenz wiederholen."
       );
+    } else {
+      maybeAutoOpenResultDialog();
     }
+  }
+
+  function maybeAutoOpenResultDialog() {
+    const reference = Storage.getReference();
+    const harness = Storage.getLatestHarnessTest();
+
+    if (!reference || !harness) return;
+
+    const comparison = Analysis.compareSessions(reference, harness);
+    if (!comparison.ready) return;
+
+    openResultDialog();
   }
 
   function renderScore(valueElement, labelElement, result) {
@@ -775,6 +799,180 @@ const App = (() => {
 
     setText(els.comparisonStatus, `TEST ${harness.label.replace("GESCHIRR TEST ", "")} ANALYSIERT`);
     setText(els.resultSummary, comparison.summary);
+  }
+
+  function scoreTier(score) {
+    if (score >= 70) return "is-good";
+    if (score >= 55) return "is-warning";
+    return "is-danger";
+  }
+
+  function formatDuration(durationMs) {
+    const totalSeconds = Math.max(0, Math.round((durationMs || 0) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function renderResultScoreList(comparison, hasReference) {
+    if (!els.resultScoreList) return;
+
+    const rows = [
+      ["fit", comparison?.ready ? comparison.passform : null, hasReference ? "GESCHIRRTEST ERFORDERLICH" : "REFERENZ ERFORDERLICH"],
+      ["stability", comparison?.ready ? comparison.stability : null, "—"],
+      ["movement", comparison?.ready ? comparison.movement : null, "—"],
+      ["symmetry", comparison?.ready ? comparison.symmetry : null, "—"]
+    ];
+
+    rows.forEach(([key, result, fallback]) => {
+      const row = els.resultScoreList.querySelector(`[data-score="${key}"]`);
+      if (!row) return;
+
+      const valueElement = row.querySelector("strong");
+      const labelElement = row.querySelector("small");
+
+      row.classList.remove("is-good", "is-warning", "is-danger");
+
+      if (result) {
+        if (valueElement) valueElement.textContent = `${result.score}`;
+        if (labelElement) labelElement.textContent = result.label;
+        row.classList.add(scoreTier(result.score));
+      } else {
+        if (valueElement) valueElement.textContent = "—";
+        if (labelElement) labelElement.textContent = fallback;
+      }
+    });
+  }
+
+  function renderResultDetailTable(comparison, reference, harness) {
+    if (!els.resultDetailBody) return;
+
+    const referenceAnalysis = comparison?.reference || reference?.analysis || null;
+    const harnessAnalysis = comparison?.harness || harness?.analysis || null;
+
+    const rows = [];
+
+    [referenceAnalysis, harnessAnalysis].forEach(analysis => {
+      if (!analysis) return;
+
+      rows.push(`
+        <tr>
+          <td>${analysis.label}</td>
+          <td>${analysis.gait}</td>
+          <td>${analysis.cadence}/min</td>
+          <td>${formatDuration(analysis.metrics?.durationMs)}</td>
+          <td>${analysis.quality?.label} (${analysis.quality?.score ?? 0}%)</td>
+        </tr>
+      `);
+    });
+
+    els.resultDetailBody.innerHTML = rows.length > 0
+      ? rows.join("")
+      : `<tr><td colspan="5">Keine Messdaten vorhanden.</td></tr>`;
+  }
+
+  function renderResultRadarChart(comparison) {
+    if (!els.resultRadarChart || !window.Chart) return;
+
+    const scores = comparison?.ready
+      ? [
+          comparison.passform.score,
+          comparison.stability.score,
+          comparison.movement.score,
+          comparison.symmetry.score
+        ]
+      : [0, 0, 0, 0];
+
+    if (!state.resultChart) {
+      const context = els.resultRadarChart.getContext("2d");
+
+      state.resultChart = new Chart(context, {
+        type: "radar",
+        data: {
+          labels: ["PASSFORM", "STABILITÄT", "LAUFBILD", "SYMMETRIE"],
+          datasets: [
+            {
+              label: "BEWERTUNG",
+              data: scores,
+              borderColor: "#00e4c6",
+              backgroundColor: "rgba(0, 228, 198, 0.18)",
+              borderWidth: 1.6,
+              pointBackgroundColor: "#65ffe6",
+              pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 25,
+                backdropColor: "transparent",
+                color: "#68737b",
+                font: { family: "Share Tech Mono", size: 8 }
+              },
+              grid: { color: "rgba(112, 128, 137, 0.22)" },
+              angleLines: { color: "rgba(112, 128, 137, 0.22)" },
+              pointLabels: {
+                color: "#b9c2c8",
+                font: { family: "Share Tech Mono", size: 10 }
+              }
+            }
+          }
+        }
+      });
+    } else {
+      state.resultChart.data.datasets[0].data = scores;
+      state.resultChart.update("none");
+    }
+  }
+
+  function renderResultDialog() {
+    const reference = Storage.getReference();
+    const harness = Storage.getLatestHarnessTest();
+    const comparison = reference && harness
+      ? Analysis.compareSessions(reference, harness)
+      : null;
+
+    renderResultScoreList(comparison, Boolean(reference));
+    renderResultDetailTable(comparison, reference, harness);
+    renderResultRadarChart(comparison);
+
+    if (els.resultVerdict) {
+      els.resultVerdict.classList.remove("is-good", "is-warning", "is-danger");
+
+      if (!reference || !harness) {
+        els.resultVerdict.textContent = "Für einen Testbericht wird eine Referenzmessung und mindestens ein Geschirrtest benötigt.";
+      } else if (!comparison.ready) {
+        els.resultVerdict.textContent = comparison.summary;
+      } else {
+        els.resultVerdict.textContent = comparison.summary;
+        els.resultVerdict.classList.add(scoreTier(comparison.passform.score));
+      }
+    }
+  }
+
+  function openResultDialog() {
+    renderResultDialog();
+
+    if (els.resultDialog && typeof els.resultDialog.showModal === "function" && !els.resultDialog.open) {
+      els.resultDialog.showModal();
+    }
+  }
+
+  function closeResultDialog() {
+    if (els.resultDialog?.open) {
+      els.resultDialog.close();
+    }
   }
 
   async function onConnectClick() {
@@ -1326,9 +1524,22 @@ const App = (() => {
 
     els.btnFinishSession?.addEventListener("click", finishSession);
     els.btnDemo?.addEventListener("click", toggleDemo);
-    els.btnSave?.addEventListener("click", downloadCsv);
-    els.btnPdf?.addEventListener("click", exportPdf);
     els.btnResetStudy?.addEventListener("click", resetStudy);
+
+    els.btnOpenResult?.addEventListener("click", openResultDialog);
+    els.btnResultClose?.addEventListener("click", closeResultDialog);
+    els.btnResultCsv?.addEventListener("click", downloadCsv);
+    els.btnResultPdf?.addEventListener("click", exportPdf);
+
+    els.scoreCards?.forEach(card => {
+      card.addEventListener("click", openResultDialog);
+      card.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openResultDialog();
+        }
+      });
+    });
 
     els.hudRadar?.addEventListener("click", openCameraDialog);
     els.hudRadar?.addEventListener("keydown", onRadarKeydown);
