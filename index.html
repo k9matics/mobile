@@ -40,7 +40,7 @@
 
       <h1>
         <span id="appName">HARNELYZER</span>
-        <span id="appVersion" class="version">v0.1.0</span>
+        <span id="appVersion" class="version">v0.2.0</span>
       </h1>
     </div>
 
@@ -287,13 +287,24 @@
         </div>
       </div>
 
-      <div id="hudRadar" class="hud-radar" aria-label="Sensorbewegung">
+      <div
+        id="hudRadar"
+        class="hud-radar"
+        role="button"
+        tabindex="0"
+        aria-label="Kamera für Gangaufnahme öffnen"
+        aria-haspopup="dialog"
+      >
         <div class="radar-grid radar-grid-horizontal"></div>
         <div class="radar-grid radar-grid-vertical"></div>
         <div class="radar-ring radar-ring-large"></div>
         <div class="radar-ring radar-ring-small"></div>
-        <div id="radarDot" class="radar-dot"></div>
-        <span class="hud-label">HARNESS MOTION FIELD</span>
+        <div class="radar-crosshair" aria-hidden="true">
+          <span class="radar-crosshair__horizontal"></span>
+          <span class="radar-crosshair__vertical"></span>
+          <span class="radar-crosshair__center"></span>
+        </div>
+        <span class="hud-label">HARNESS MOTION FIELD · KAMERA</span>
         <span id="tiltValue" class="hud-tilt">TILT: 0.0°</span>
         <span id="hudCoords" class="hud-coords">X:0.00 Y:0.00</span>
       </div>
@@ -380,6 +391,59 @@
         </button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="cameraDialog" class="camera-dialog" aria-labelledby="cameraTitle">
+    <section class="camera-dialog__panel">
+      <header class="camera-dialog__header">
+        <div>
+          <p class="eyebrow">VIDEO-REFERENZ</p>
+          <h2 id="cameraTitle">GANGAUFNAHME</h2>
+        </div>
+        <button
+          id="btnCameraClose"
+          class="btn btn-secondary camera-close"
+          type="button"
+          aria-label="Gangaufnahme schließen"
+        >
+          SCHLIESSEN
+        </button>
+      </header>
+
+      <p class="camera-dialog__guide">
+        Seitlich filmen · alle Pfoten sichtbar · gerade, möglichst ebene Strecke.
+        Das Video bleibt auf diesem Gerät.
+      </p>
+
+      <div class="camera-stage">
+        <video id="cameraPreview" class="camera-preview" autoplay muted playsinline></video>
+        <video id="cameraPlayback" class="camera-playback" controls playsinline hidden></video>
+
+        <div class="camera-hud" aria-hidden="true">
+          <span class="camera-hud__label">SENSOR-REFERENZ</span>
+          <span class="camera-hud__crosshair">
+            <i></i><b></b><em></em>
+          </span>
+          <span id="cameraSensorState" class="camera-hud__state">BEREIT</span>
+        </div>
+      </div>
+
+      <p id="cameraStatus" class="camera-status" role="status" aria-live="polite">
+        Kamera ist noch nicht aktiviert.
+      </p>
+
+      <div class="camera-dialog__actions">
+        <button id="btnCameraEnable" class="btn btn-primary" type="button">
+          KAMERA AKTIVIEREN
+        </button>
+        <button id="btnCameraRecord" class="btn btn-stop" type="button" disabled>
+          AUFNAHME STARTEN
+        </button>
+        <button id="btnCameraDiscard" class="btn btn-secondary" type="button" disabled>
+          AUFNAHME VERWERFEN
+        </button>
+      </div>
+    </section>
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

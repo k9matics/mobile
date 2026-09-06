@@ -1,15 +1,8 @@
 "use strict";
 
 /*
-  HARNELYZER — App Controller v0.1.0
-
-  Ablauf:
-  1. Referenz ohne Geschirr aufnehmen.
-  2. Geschirr-Test A, danach optional B/C aufnehmen.
-  3. Jede Messung wird direkt auf Qualität geprüft.
-  4. Bei bestehender Referenz wird der Geschirrtest verglichen.
-
-  Der Start erfolgt bewusst manuell.
+  HARNELYZER — App Controller v0.2.0
+  Referenz- und Geschirrmessung plus lokale Video-Gangaufnahme.
 */
 
 const App = (() => {
@@ -25,7 +18,12 @@ const App = (() => {
     latestPacket: null,
     chart: null,
     chartMode: "acceleration",
-    calibrationRunning: false
+    calibrationRunning: false,
+    cameraStream: null,
+    mediaRecorder: null,
+    recordedChunks: [],
+    recordedVideoUrl: null,
+    cameraRecording: false
   };
 
   function byId(id) {
@@ -93,10 +91,20 @@ const App = (() => {
     els.analysisStatus = byId("analysisStatus");
     els.debugRaw = byId("debugRaw");
 
-    els.radarDot = byId("radarDot");
+    els.hudRadar = byId("hudRadar");
     els.hudCoords = byId("hudCoords");
     els.tiltValue = byId("tiltValue");
     els.sensorChart = byId("sensorChart");
+
+    els.cameraDialog = byId("cameraDialog");
+    els.cameraPreview = byId("cameraPreview");
+    els.cameraPlayback = byId("cameraPlayback");
+    els.cameraStatus = byId("cameraStatus");
+    els.cameraSensorState = byId("cameraSensorState");
+    els.btnCameraEnable = byId("btnCameraEnable");
+    els.btnCameraRecord = byId("btnCameraRecord");
+    els.btnCameraDiscard = byId("btnCameraDiscard");
+    els.btnCameraClose = byId("btnCameraClose");
   }
 
   function setVersion() {
@@ -107,10 +115,10 @@ const App = (() => {
     }
 
     if (els.appVersion) {
-      els.appVersion.textContent = `v${window.APP_META.version || "0.1.0"}`;
+      els.appVersion.textContent = `v${window.APP_META.version || "0.2.0"}`;
     }
 
-    document.title = `${window.APP_META.name || "HARNELYZER"} v${window.APP_META.version || "0.1.0"}`;
+    document.title = `${window.APP_META.name || "HARNELYZER"} v${window.APP_META.version || "0.2.0"}`;
   }
 
   function createChart() {
@@ -282,23 +290,20 @@ const App = (() => {
 
   function updateRadar(packet) {
     const safePacket = Analysis.normalizePacket(packet);
-
     const x = Math.max(-1.4, Math.min(1.4, safePacket.accX));
     const y = Math.max(-1.4, Math.min(1.4, safePacket.accY));
-    const z = Math.max(-1.4, Math.min(1.8, safePacket.accZ));
-
-    const translateX = x * 54;
-    const translateY = y * -54;
-    const scale = 0.88 + Math.min(0.32, Math.abs(z) * 0.07);
-
-    if (els.radarDot) {
-      els.radarDot.style.transform =
-        `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-    }
-
     const roll = Analysis.calcRoll(safePacket);
     const pitch = Analysis.calcPitch(safePacket);
     const tilt = Math.sqrt(roll * roll + pitch * pitch);
+
+    if (els.hudRadar) {
+      const level = tilt < 8 ? "stable" : tilt < 18 ? "caution" : "alert";
+      els.hudRadar.dataset.level = level;
+      els.hudRadar.setAttribute(
+        "aria-label",
+        `Kamera für Gangaufnahme öffnen. Aktuelle Neigung ${tilt.toFixed(1)} Grad.`
+      );
+    }
 
     if (els.hudCoords) {
       els.hudCoords.textContent = `X:${x.toFixed(2)} Y:${y.toFixed(2)}`;
@@ -306,6 +311,12 @@ const App = (() => {
 
     if (els.tiltValue) {
       els.tiltValue.textContent = `TILT: ${tilt.toFixed(1)}°`;
+    }
+
+    if (els.cameraSensorState) {
+      els.cameraSensorState.textContent = state.connected
+        ? `LIVE · ${tilt.toFixed(1)}°`
+        : `OFFLINE · ${tilt.toFixed(1)}°`;
     }
   }
 
@@ -372,6 +383,10 @@ const App = (() => {
       els.connectionStatus.textContent = connected ? "ONLINE" : label;
       els.connectionStatus.classList.toggle("is-online", connected);
       els.connectionStatus.classList.toggle("is-error", !connected && label !== "OFFLINE");
+    }
+
+    if (els.cameraSensorState && !state.latestPacket) {
+      els.cameraSensorState.textContent = connected ? "LIVE · BEREIT" : "OFFLINE";
     }
 
     renderSensorSlots();
@@ -846,6 +861,235 @@ const App = (() => {
     }
   }
 
+  function setCameraStatus(message, tone = "default") {
+    if (!els.cameraStatus) return;
+
+    els.cameraStatus.textContent = message;
+    els.cameraStatus.classList.toggle("is-error", tone === "error");
+    els.cameraStatus.classList.toggle("is-recording", tone === "recording");
+  }
+
+  function isCameraSupported() {
+    return Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+  }
+
+  function revokeRecordedVideo() {
+    if (!state.recordedVideoUrl) return;
+
+    URL.revokeObjectURL(state.recordedVideoUrl);
+    state.recordedVideoUrl = null;
+  }
+
+  function resetCameraPlayback() {
+    revokeRecordedVideo();
+    state.recordedChunks = [];
+
+    if (els.cameraPlayback) {
+      els.cameraPlayback.pause();
+      els.cameraPlayback.removeAttribute("src");
+      els.cameraPlayback.hidden = true;
+      els.cameraPlayback.load();
+    }
+
+    if (els.cameraPreview) {
+      els.cameraPreview.hidden = false;
+    }
+
+    if (els.btnCameraDiscard) {
+      els.btnCameraDiscard.disabled = true;
+    }
+  }
+
+  function stopCameraStream() {
+    if (state.mediaRecorder?.state === "recording") {
+      state.mediaRecorder.stop();
+    }
+
+    if (state.cameraStream) {
+      state.cameraStream.getTracks().forEach(track => track.stop());
+      state.cameraStream = null;
+    }
+
+    if (els.cameraPreview) {
+      els.cameraPreview.srcObject = null;
+    }
+
+    state.mediaRecorder = null;
+    state.cameraRecording = false;
+
+    if (els.btnCameraRecord) {
+      els.btnCameraRecord.disabled = true;
+      els.btnCameraRecord.textContent = "AUFNAHME STARTEN";
+    }
+
+    if (els.btnCameraEnable) {
+      els.btnCameraEnable.textContent = "KAMERA AKTIVIEREN";
+    }
+  }
+
+  function closeCameraDialog() {
+    stopCameraStream();
+
+    if (els.cameraDialog?.open) {
+      els.cameraDialog.close();
+    }
+  }
+
+  function openCameraDialog() {
+    if (!els.cameraDialog) return;
+
+    if (!els.cameraDialog.open) {
+      els.cameraDialog.showModal();
+    }
+
+    resetCameraPlayback();
+
+    if (!isCameraSupported()) {
+      setCameraStatus(
+        "Kameraaufnahme wird von diesem Browser nicht unterstützt. Die Sensormessung bleibt verfügbar.",
+        "error"
+      );
+
+      if (els.btnCameraEnable) els.btnCameraEnable.disabled = true;
+      return;
+    }
+
+    if (els.btnCameraEnable) els.btnCameraEnable.disabled = false;
+    setCameraStatus("Kamera erst aktivieren, wenn du bereit bist. Die Sensormessung bleibt unabhängig verfügbar.");
+  }
+
+  async function enableCamera() {
+    if (!isCameraSupported()) {
+      setCameraStatus("Kameraaufnahme wird von diesem Browser nicht unterstützt.", "error");
+      return;
+    }
+
+    stopCameraStream();
+    resetCameraPlayback();
+    setCameraStatus("Kamera wird aktiviert …");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+
+      state.cameraStream = stream;
+
+      if (els.cameraPreview) {
+        els.cameraPreview.srcObject = stream;
+        els.cameraPreview.hidden = false;
+        await els.cameraPreview.play().catch(() => undefined);
+      }
+
+      if (els.btnCameraEnable) els.btnCameraEnable.textContent = "KAMERA AKTIV";
+      if (els.btnCameraRecord) els.btnCameraRecord.disabled = false;
+      setCameraStatus("Kamera bereit. Seitlich filmen und dann Aufnahme starten.");
+    } catch (error) {
+      const denied = error?.name === "NotAllowedError" || error?.name === "SecurityError";
+
+      setCameraStatus(
+        denied
+          ? "Kamera nicht freigegeben. Du kannst die Sensormessung ohne Video fortsetzen."
+          : "Kamera konnte nicht gestartet werden. Prüfe Berechtigung oder ein anderes Gerät.",
+        "error"
+      );
+    }
+  }
+
+  function selectRecorderMimeType() {
+    if (!window.MediaRecorder?.isTypeSupported) return "";
+
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm"
+    ];
+
+    return candidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  function startCameraRecording() {
+    if (!state.cameraStream || !window.MediaRecorder) {
+      setCameraStatus("Bitte zuerst die Kamera aktivieren.", "error");
+      return;
+    }
+
+    resetCameraPlayback();
+    state.recordedChunks = [];
+
+    try {
+      const mimeType = selectRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(state.cameraStream, { mimeType })
+        : new MediaRecorder(state.cameraStream);
+
+      state.mediaRecorder = recorder;
+
+      recorder.addEventListener("dataavailable", event => {
+        if (event.data?.size) state.recordedChunks.push(event.data);
+      });
+
+      recorder.addEventListener("stop", () => {
+        const type = recorder.mimeType || "video/webm";
+        const blob = new Blob(state.recordedChunks, { type });
+
+        if (blob.size && els.cameraPlayback) {
+          state.recordedVideoUrl = URL.createObjectURL(blob);
+          els.cameraPlayback.src = state.recordedVideoUrl;
+          els.cameraPlayback.hidden = false;
+          if (els.cameraPreview) els.cameraPreview.hidden = true;
+          if (els.btnCameraDiscard) els.btnCameraDiscard.disabled = false;
+          setCameraStatus("Aufnahme beendet. Das Video liegt nur lokal in diesem Browser.");
+        } else {
+          setCameraStatus("Es wurde keine Videoaufnahme erstellt.", "error");
+        }
+
+        state.cameraRecording = false;
+        state.mediaRecorder = null;
+
+        if (els.btnCameraRecord) {
+          els.btnCameraRecord.textContent = "AUFNAHME STARTEN";
+        }
+      });
+
+      recorder.start(500);
+      state.cameraRecording = true;
+
+      if (els.btnCameraRecord) {
+        els.btnCameraRecord.textContent = "AUFNAHME BEENDEN";
+      }
+
+      setCameraStatus("● AUFZEICHNUNG LÄUFT — Sensordaten können später zeitlich ergänzt werden.", "recording");
+    } catch (error) {
+      console.error(error);
+      setCameraStatus("Aufnahme konnte nicht gestartet werden.", "error");
+    }
+  }
+
+  function toggleCameraRecording() {
+    if (state.cameraRecording && state.mediaRecorder?.state === "recording") {
+      state.mediaRecorder.stop();
+      return;
+    }
+
+    startCameraRecording();
+  }
+
+  function discardCameraRecording() {
+    resetCameraPlayback();
+
+    if (state.cameraStream && els.cameraPreview) {
+      els.cameraPreview.hidden = false;
+    }
+
+    setCameraStatus("Aufnahme verworfen. Kamera bleibt für eine neue Aufnahme bereit.");
+  }
+
   function makeDemoPacket() {
     const now = Date.now();
     const t = now / 360;
@@ -1014,8 +1258,9 @@ const App = (() => {
     state.latestPacket = null;
     state.measuring = false;
 
-    if (els.radarDot) {
-      els.radarDot.style.transform = "translate(0px, 0px) scale(1)";
+    if (els.hudRadar) {
+      els.hudRadar.dataset.level = "stable";
+      els.hudRadar.setAttribute("aria-label", "Kamera für Gangaufnahme öffnen");
     }
 
     setText(els.hudCoords, "X:0.00 Y:0.00");
@@ -1059,6 +1304,13 @@ const App = (() => {
     }
   }
 
+  function onRadarKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    openCameraDialog();
+  }
+
   function bindEvents() {
     els.btnConnect?.addEventListener("click", onConnectClick);
     els.btnCalib?.addEventListener("click", openCalibrationDialog);
@@ -1077,6 +1329,18 @@ const App = (() => {
     els.btnSave?.addEventListener("click", downloadCsv);
     els.btnPdf?.addEventListener("click", exportPdf);
     els.btnResetStudy?.addEventListener("click", resetStudy);
+
+    els.hudRadar?.addEventListener("click", openCameraDialog);
+    els.hudRadar?.addEventListener("keydown", onRadarKeydown);
+    els.btnCameraEnable?.addEventListener("click", enableCamera);
+    els.btnCameraRecord?.addEventListener("click", toggleCameraRecording);
+    els.btnCameraDiscard?.addEventListener("click", discardCameraRecording);
+    els.btnCameraClose?.addEventListener("click", closeCameraDialog);
+    els.cameraDialog?.addEventListener("close", stopCameraStream);
+    els.cameraDialog?.addEventListener("cancel", event => {
+      event.preventDefault();
+      closeCameraDialog();
+    });
 
     els.chartMode?.addEventListener("change", event => {
       state.chartMode = event.target.value;
@@ -1137,6 +1401,10 @@ const App = (() => {
     resetScores();
     renderRoutine();
     renderSensorSlots();
+
+    if (els.hudRadar) {
+      els.hudRadar.dataset.level = "stable";
+    }
   }
 
   return {

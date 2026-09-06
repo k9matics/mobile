@@ -1,8 +1,7 @@
 /*
-  HARNELYZER v0.1.0
-  Art direction: field-analysis instrument.
-  Palette: black + tactical olive surfaces, restrained red alerts,
-  cyan sensor data. Dense, technical, deliberately non-generic.
+  HARNELYZER v0.2.0
+  Field-analysis instrument.
+  Radar crosshair + local gait-video capture.
 */
 
 :root {
@@ -13,43 +12,29 @@
   --surface-3: #1b211b;
   --surface-olive: #222b18;
   --surface-olive-strong: #303d20;
-
   --text: #e9eee4;
   --text-muted: #98a096;
   --text-dim: #687066;
-
   --olive: #859a48;
   --olive-bright: #b1c86b;
   --olive-dark: #48552a;
-
   --cyan: #00e4c6;
   --cyan-bright: #65ffe6;
   --cyan-soft: rgba(0, 228, 198, 0.13);
-
   --red: #d72f59;
   --red-bright: #ff6689;
   --red-soft: rgba(215, 47, 89, 0.15);
-
   --yellow: #e0ba28;
   --border: rgba(192, 205, 179, 0.17);
   --border-strong: rgba(192, 205, 179, 0.28);
   --border-cyan: rgba(0, 228, 198, 0.32);
   --border-olive: rgba(177, 200, 107, 0.34);
   --border-red: rgba(255, 102, 137, 0.34);
-
   --radius-sm: 0.35rem;
   --radius-md: 0.55rem;
   --radius-lg: 0.85rem;
-
-  --shadow-panel:
-    0 1px 0 rgba(255, 255, 255, 0.035) inset,
-    0 16px 34px rgba(0, 0, 0, 0.32);
-
-  --shadow-button:
-    0 1px 0 rgba(255, 255, 255, 0.10) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.48) inset,
-    0 5px 12px rgba(0, 0, 0, 0.25);
-
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 16px 34px rgba(0, 0, 0, 0.32);
+  --shadow-button: 0 1px 0 rgba(255, 255, 255, 0.10) inset, 0 -1px 0 rgba(0, 0, 0, 0.48) inset, 0 5px 12px rgba(0, 0, 0, 0.25);
   --font-display: "Bebas Neue", Impact, sans-serif;
   --font-body: "Share Tech Mono", "Courier New", monospace;
 }
@@ -109,7 +94,8 @@ button:disabled {
 
 button:focus-visible,
 select:focus-visible,
-a:focus-visible {
+a:focus-visible,
+[role="button"]:focus-visible {
   outline: 2px solid var(--cyan-bright);
   outline-offset: 3px;
 }
@@ -121,8 +107,8 @@ a:focus-visible {
   left: 0.5rem;
   padding: 0.6rem 0.85rem;
   color: #02100d;
-  background: var(--cyan-bright);
   border-radius: var(--radius-sm);
+  background: var(--cyan-bright);
   transform: translateY(-160%);
   transition: transform 160ms ease;
 }
@@ -142,8 +128,7 @@ a:focus-visible {
   min-height: 4.4rem;
   padding: 0.65rem clamp(0.75rem, 3vw, 1.35rem);
   border-bottom: 1px solid var(--border-olive);
-  background:
-    linear-gradient(90deg, rgba(33, 42, 23, 0.96), rgba(11, 14, 12, 0.97) 64%, rgba(7, 10, 10, 0.98));
+  background: linear-gradient(90deg, rgba(33, 42, 23, 0.96), rgba(11, 14, 12, 0.97) 64%, rgba(7, 10, 10, 0.98));
   box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(14px);
 }
@@ -155,13 +140,7 @@ a:focus-visible {
   left: 0;
   height: 1px;
   content: "";
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(177, 200, 107, 0.62) 25%,
-    rgba(0, 228, 198, 0.34) 58%,
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(177, 200, 107, 0.62) 25%, rgba(0, 228, 198, 0.34) 58%, transparent);
 }
 
 .brand-lockup,
@@ -170,7 +149,9 @@ a:focus-visible {
 .routine-actions,
 .routine-meta,
 .utility-actions,
-.calibration-actions {
+.calibration-actions,
+.camera-dialog__header,
+.camera-dialog__actions {
   display: flex;
   align-items: center;
 }
@@ -272,18 +253,10 @@ h1 {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.022) 0 1px,
-      transparent 1px 7px
-    ),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 7px),
     linear-gradient(180deg, #29302d, #151a18 52%, #0e1110);
   box-shadow: var(--shadow-button);
-  transition:
-    transform 120ms ease,
-    border-color 160ms ease,
-    filter 160ms ease,
-    box-shadow 160ms ease;
+  transition: transform 120ms ease, border-color 160ms ease, filter 160ms ease, box-shadow 160ms ease;
 }
 
 .btn::before {
@@ -295,28 +268,18 @@ h1 {
   pointer-events: none;
   content: "";
   opacity: 0.7;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.18),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
 }
 
 .btn:hover:not(:disabled) {
   border-color: var(--border-cyan);
   filter: brightness(1.08);
-  box-shadow:
-    var(--shadow-button),
-    0 0 0 1px rgba(0, 228, 198, 0.06),
-    0 0 1rem rgba(0, 228, 198, 0.08);
+  box-shadow: var(--shadow-button), 0 0 0 1px rgba(0, 228, 198, 0.06), 0 0 1rem rgba(0, 228, 198, 0.08);
 }
 
 .btn:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.3) inset,
-    0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) inset, 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .btn:disabled {
@@ -332,11 +295,7 @@ h1 {
   color: #f0ffef;
   border-color: rgba(177, 200, 107, 0.52);
   background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.035) 0 1px,
-      transparent 1px 7px
-    ),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 7px),
     linear-gradient(180deg, #71853d, #4d6029 55%, #34421e);
 }
 
@@ -344,27 +303,16 @@ h1 {
   color: #031c17;
   border-color: rgba(101, 255, 230, 0.78);
   background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.12) 0 1px,
-      transparent 1px 7px
-    ),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 7px),
     linear-gradient(180deg, #5cffe0, #00c9ae 55%, #009782);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.42) inset,
-    0 -1px 0 rgba(0, 64, 55, 0.6) inset,
-    0 0 1rem rgba(0, 228, 198, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.42) inset, 0 -1px 0 rgba(0, 64, 55, 0.6) inset, 0 0 1rem rgba(0, 228, 198, 0.18);
 }
 
 .btn-primary {
   color: #f6ffe4;
   border-color: rgba(190, 220, 100, 0.58);
   background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.035) 0 1px,
-      transparent 1px 8px
-    ),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 8px),
     linear-gradient(180deg, #829948, #5d7132 50%, #3c4923);
 }
 
@@ -376,11 +324,7 @@ h1 {
   color: #ffe7ed;
   border-color: rgba(255, 102, 137, 0.52);
   background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.025) 0 1px,
-      transparent 1px 7px
-    ),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 7px),
     linear-gradient(180deg, #b53a58, #7e203a 55%, #531426);
 }
 
@@ -388,8 +332,7 @@ h1 {
   min-height: 2.32rem;
   color: #f3e9c1;
   border-color: rgba(224, 186, 40, 0.4);
-  background:
-    linear-gradient(180deg, #63521c, #3d3210 56%, #251e09);
+  background: linear-gradient(180deg, #63521c, #3d3210 56%, #251e09);
   font-size: 0.68rem;
 }
 
@@ -445,12 +388,7 @@ h1 {
   pointer-events: none;
   content: "";
   opacity: 0.38;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.015) 0 1px,
-      transparent 1px 9px
-    );
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 9px);
 }
 
 .setup-panel,
@@ -493,12 +431,8 @@ h1 {
   border-radius: var(--radius-sm);
   outline: none;
   background-color: #0d110f;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--cyan) 50%),
-    linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
-  background-position:
-    calc(100% - 0.88rem) 1rem,
-    calc(100% - 0.62rem) 1rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--cyan) 50%), linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
+  background-position: calc(100% - 0.88rem) 1rem, calc(100% - 0.62rem) 1rem;
   background-repeat: no-repeat;
   background-size: 0.28rem 0.28rem, 0.28rem 0.28rem;
   appearance: none;
@@ -531,7 +465,8 @@ h1 {
 }
 
 .section-heading h2,
-.calibration-box h2 {
+.calibration-box h2,
+.camera-dialog__header h2 {
   margin-top: 0.12rem;
   color: #edf4e6;
   font-family: var(--font-display);
@@ -608,9 +543,7 @@ h1 {
 
 .routine-panel {
   border-color: rgba(177, 200, 107, 0.26);
-  background:
-    radial-gradient(circle at 96% 0%, rgba(133, 154, 72, 0.15), transparent 13rem),
-    linear-gradient(180deg, #1b2119, #0e120e);
+  background: radial-gradient(circle at 96% 0%, rgba(133, 154, 72, 0.15), transparent 13rem), linear-gradient(180deg, #1b2119, #0e120e);
 }
 
 .routine-state {
@@ -645,8 +578,7 @@ h1 {
 .routine-step.is-active {
   color: var(--text);
   border-color: rgba(177, 200, 107, 0.36);
-  background:
-    linear-gradient(90deg, rgba(133, 154, 72, 0.15), rgba(8, 12, 9, 0.34));
+  background: linear-gradient(90deg, rgba(133, 154, 72, 0.15), rgba(8, 12, 9, 0.34));
 }
 
 .routine-step.is-done {
@@ -727,8 +659,7 @@ h1 {
   padding: 0.7rem;
   border: 1px solid rgba(177, 200, 107, 0.18);
   border-radius: var(--radius-sm);
-  background:
-    linear-gradient(90deg, rgba(133, 154, 72, 0.13), rgba(14, 19, 13, 0.6));
+  background: linear-gradient(90deg, rgba(133, 154, 72, 0.13), rgba(14, 19, 13, 0.6));
 }
 
 .guide-icon {
@@ -813,9 +744,7 @@ h1 {
 
 .score-panel {
   border-color: rgba(0, 228, 198, 0.18);
-  background:
-    radial-gradient(circle at 4% 0%, rgba(0, 228, 198, 0.10), transparent 12rem),
-    linear-gradient(180deg, #121a17, #0c100e);
+  background: radial-gradient(circle at 4% 0%, rgba(0, 228, 198, 0.10), transparent 12rem), linear-gradient(180deg, #121a17, #0c100e);
 }
 
 .comparison-status {
@@ -839,9 +768,7 @@ h1 {
   overflow: hidden;
   border: 1px solid rgba(176, 190, 175, 0.17);
   border-radius: var(--radius-sm);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 42%),
-    rgba(4, 8, 7, 0.52);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 42%), rgba(4, 8, 7, 0.52);
 }
 
 .score-card::after {
@@ -920,14 +847,11 @@ h1 {
   color: #b6c1b7;
   font-size: 0.72rem;
   border-left: 2px solid var(--olive);
-  background:
-    linear-gradient(90deg, rgba(133, 154, 72, 0.13), rgba(8, 12, 10, 0.30));
+  background: linear-gradient(90deg, rgba(133, 154, 72, 0.13), rgba(8, 12, 10, 0.30));
 }
 
 .live-panel {
-  background:
-    radial-gradient(circle at 92% 0%, rgba(0, 228, 198, 0.075), transparent 13rem),
-    linear-gradient(180deg, #101513, #090c0b);
+  background: radial-gradient(circle at 92% 0%, rgba(0, 228, 198, 0.075), transparent 13rem), linear-gradient(180deg, #101513, #090c0b);
 }
 
 .chart-select {
@@ -985,20 +909,43 @@ h1 {
   min-height: 13.6rem;
   margin-top: 0.55rem;
   overflow: hidden;
+  cursor: pointer;
   place-items: center;
   border: 1px solid var(--border-cyan);
   border-radius: var(--radius-md);
+  outline: none;
   background:
     radial-gradient(circle at center, rgba(0, 228, 198, 0.16), rgba(0, 228, 198, 0.032) 26%, transparent 54%),
     linear-gradient(180deg, rgba(5, 13, 11, 0.96), rgba(2, 6, 5, 0.98));
-  box-shadow:
-    0 0 0 1px rgba(0, 228, 198, 0.04) inset,
-    0 0 1.3rem rgba(0, 228, 198, 0.05);
+  box-shadow: 0 0 0 1px rgba(0, 228, 198, 0.04) inset, 0 0 1.3rem rgba(0, 228, 198, 0.05);
+  transition: border-color 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+}
+
+.hud-radar:hover,
+.hud-radar:focus-visible {
+  border-color: rgba(101, 255, 230, 0.74);
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px rgba(0, 228, 198, 0.1) inset, 0 0 1.55rem rgba(0, 228, 198, 0.14);
+}
+
+.hud-radar::after {
+  position: absolute;
+  z-index: 0;
+  right: 0.68rem;
+  top: 0.58rem;
+  padding: 0.2rem 0.32rem;
+  color: var(--cyan-bright);
+  font-size: 0.52rem;
+  letter-spacing: 0.07em;
+  content: "KAMERA ÖFFNEN";
+  border: 1px solid rgba(0, 228, 198, 0.24);
+  background: rgba(1, 15, 12, 0.55);
+  opacity: 0.64;
 }
 
 .radar-grid,
 .radar-ring,
-.radar-dot {
+.radar-crosshair {
   position: absolute;
 }
 
@@ -1030,22 +977,70 @@ h1 {
   border-color: rgba(0, 228, 198, 0.22);
 }
 
-.radar-dot {
-  width: 1.12rem;
-  aspect-ratio: 1;
-  border: 2px solid #effffb;
+.radar-crosshair {
+  z-index: 2;
+  width: 4.4rem;
+  height: 4.4rem;
+  color: var(--cyan);
+  pointer-events: none;
+  filter: drop-shadow(0 0 0.5rem rgba(0, 228, 198, 0.45));
+  transition: color 160ms ease, filter 160ms ease;
+}
+
+.radar-crosshair__horizontal,
+.radar-crosshair__vertical {
+  position: absolute;
+  display: block;
+  opacity: 0.92;
+  background: currentColor;
+}
+
+.radar-crosshair__horizontal {
+  top: calc(50% - 0.5px);
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.radar-crosshair__vertical {
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 0.5px);
+  width: 1px;
+}
+
+.radar-crosshair__center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.58rem;
+  height: 0.58rem;
+  border: 1px solid currentColor;
   border-radius: 50%;
-  background: var(--cyan);
-  box-shadow:
-    0 0 0.4rem rgba(255, 255, 255, 0.94),
-    0 0 1.3rem rgba(0, 228, 198, 0.80);
-  transition: transform 100ms linear;
+  background: rgba(0, 228, 198, 0.18);
+  box-shadow: 0 0 0.75rem currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.hud-radar[data-level="stable"] .radar-crosshair {
+  color: var(--cyan);
+}
+
+.hud-radar[data-level="caution"] .radar-crosshair {
+  color: var(--yellow);
+  filter: drop-shadow(0 0 0.5rem rgba(224, 186, 40, 0.42));
+}
+
+.hud-radar[data-level="alert"] .radar-crosshair {
+  color: var(--red-bright);
+  filter: drop-shadow(0 0 0.5rem rgba(255, 102, 137, 0.42));
 }
 
 .hud-label,
 .hud-tilt,
 .hud-coords {
   position: absolute;
+  z-index: 3;
   font-size: 0.61rem;
   letter-spacing: 0.075em;
 }
@@ -1134,21 +1129,22 @@ h1 {
   padding-bottom: 1.2rem;
 }
 
-.calibration-dialog {
-  width: min(92vw, 29rem);
+.calibration-dialog,
+.camera-dialog {
   padding: 0;
   color: var(--text);
-  border: 1px solid rgba(177, 200, 107, 0.40);
   border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle at 95% 0%, rgba(133, 154, 72, 0.18), transparent 11rem),
-    linear-gradient(180deg, #1b2118, #0c110e);
-  box-shadow:
-    0 1.5rem 4rem rgba(0, 0, 0, 0.58),
-    0 0 1.4rem rgba(133, 154, 72, 0.11);
 }
 
-.calibration-dialog::backdrop {
+.calibration-dialog {
+  width: min(92vw, 29rem);
+  border: 1px solid rgba(177, 200, 107, 0.40);
+  background: radial-gradient(circle at 95% 0%, rgba(133, 154, 72, 0.18), transparent 11rem), linear-gradient(180deg, #1b2118, #0c110e);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.58), 0 0 1.4rem rgba(133, 154, 72, 0.11);
+}
+
+.calibration-dialog::backdrop,
+.camera-dialog::backdrop {
   background: rgba(0, 0, 0, 0.73);
   backdrop-filter: blur(4px);
 }
@@ -1201,6 +1197,162 @@ h1 {
 
 .calibration-actions .btn {
   flex: 1 1 10rem;
+}
+
+.camera-dialog {
+  width: min(94vw, 43rem);
+  max-width: none;
+  border: 1px solid var(--border-cyan);
+  background: #080c0b;
+  box-shadow: 0 1.2rem 4rem rgba(0, 0, 0, 0.7), 0 0 2rem rgba(0, 228, 198, 0.11);
+}
+
+.camera-dialog__panel {
+  padding: clamp(0.85rem, 3vw, 1.2rem);
+  background: radial-gradient(circle at 100% 0%, rgba(0, 228, 198, 0.1), transparent 16rem), linear-gradient(180deg, rgba(25, 31, 26, 0.98), rgba(5, 8, 7, 0.99));
+}
+
+.camera-dialog__header,
+.camera-dialog__actions {
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.camera-dialog__header h2 {
+  font-size: clamp(1.35rem, 5vw, 1.75rem);
+}
+
+.camera-close {
+  min-height: 2.25rem;
+  font-size: 0.67rem;
+}
+
+.camera-dialog__guide {
+  margin: 0.8rem 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.camera-stage {
+  position: relative;
+  min-height: 15rem;
+  overflow: hidden;
+  border: 1px solid rgba(0, 228, 198, 0.27);
+  border-radius: var(--radius-md);
+  background: linear-gradient(45deg, rgba(0, 228, 198, 0.035) 25%, transparent 25%) 0 0 / 14px 14px, #020504;
+}
+
+.camera-preview,
+.camera-playback {
+  display: block;
+  width: 100%;
+  min-height: 15rem;
+  max-height: 62dvh;
+  object-fit: cover;
+  background: #020504;
+}
+
+.camera-playback[hidden],
+.camera-preview[hidden] {
+  display: none;
+}
+
+.camera-hud {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  pointer-events: none;
+  place-items: center;
+}
+
+.camera-hud__label,
+.camera-hud__state {
+  position: absolute;
+  padding: 0.28rem 0.38rem;
+  color: var(--cyan-bright);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(0, 228, 198, 0.3);
+  background: rgba(2, 13, 11, 0.68);
+}
+
+.camera-hud__label {
+  top: 0.55rem;
+  left: 0.55rem;
+}
+
+.camera-hud__state {
+  right: 0.55rem;
+  bottom: 0.55rem;
+}
+
+.camera-hud__crosshair {
+  position: relative;
+  display: block;
+  width: 5.3rem;
+  height: 5.3rem;
+  color: var(--cyan);
+  opacity: 0.82;
+  filter: drop-shadow(0 0 0.65rem rgba(0, 228, 198, 0.55));
+}
+
+.camera-hud__crosshair i,
+.camera-hud__crosshair b {
+  position: absolute;
+  display: block;
+  background: currentColor;
+}
+
+.camera-hud__crosshair i {
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.camera-hud__crosshair b {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.camera-hud__crosshair em {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.58rem;
+  height: 0.58rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: rgba(0, 228, 198, 0.13);
+  transform: translate(-50%, -50%);
+}
+
+.camera-status {
+  min-height: 1.3rem;
+  margin: 0.66rem 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.camera-status.is-error {
+  color: var(--red-bright);
+}
+
+.camera-status.is-recording {
+  color: #ffe27b;
+}
+
+.camera-dialog__actions {
+  flex-wrap: wrap;
+}
+
+.camera-dialog__actions .btn {
+  flex: 1 1 11rem;
 }
 
 .sr-only {
@@ -1312,6 +1464,12 @@ h1 {
 
   .section-heading {
     align-items: flex-start;
+  }
+
+  .camera-stage,
+  .camera-preview,
+  .camera-playback {
+    min-height: 12.5rem;
   }
 }
 
