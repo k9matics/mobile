@@ -2,7 +2,7 @@
 
 window.APP_META = {
   name: "HARNELYZER",
-  version: "0.2.0",
+  version: "0.3.0",
   releaseDate: "2026-09-06",
-  channel: "testbericht-popup"
+  channel: "3d-bewegungsansicht"
 };
