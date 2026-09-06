@@ -263,14 +263,7 @@
           <h2 id="liveTitle">BEWEGUNGSSENSOR</h2>
         </div>
 
-        <label class="chart-select">
-          <span class="sr-only">Diagrammansicht</span>
-          <select id="chartMode">
-            <option value="acceleration">BESCHLEUNIGUNG</option>
-            <option value="gyro">GYROSKOP</option>
-            <option value="tilt">NEIGUNG</option>
-          </select>
-        </label>
+        <span class="scene3d-hint">ZIEHEN ZUM DREHEN · PLATZHALTER-MODELL</span>
       </div>
 
       <div class="live-kpis">
@@ -317,8 +310,8 @@
         <span id="hudCoords" class="hud-coords">X:0.00 Y:0.00</span>
       </div>
 
-      <div class="chart-container">
-        <canvas id="sensorChart" aria-label="Live Sensor Diagramm"></canvas>
+      <div class="chart-container scene3d-container">
+        <canvas id="scene3dCanvas" aria-label="3D Bewegungsansicht mit Platzhaltermodell"></canvas>
       </div>
 
       <div class="analysis-panel">
@@ -526,11 +519,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
   <script src="version.js"></script>
   <script src="analysis.js"></script>
   <script src="storage.js"></script>
   <script src="sensor.js"></script>
+  <script src="scene3d.js"></script>
   <script src="pdf.js"></script>
   <script src="app.js"></script>
 </body>
