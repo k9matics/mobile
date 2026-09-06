@@ -1468,6 +1468,22 @@ h1 {
   margin-bottom: 0.9rem;
 }
 
+.result-visuals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.result-visuals .result-chart {
+  min-height: 13rem;
+}
+
+.result-chart--3d canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
 .result-chart {
   position: relative;
   min-height: 15rem;
