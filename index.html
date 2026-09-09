@@ -9,9 +9,9 @@
   <meta name="theme-color" content="#080b0d">
   <meta
     name="description"
-    content="Harnelyzer analysiert die Bewegungsstabilität eines Hundegeschirrs im Vergleich zu einer persönlichen Referenzmessung."
+    content="HARNELYZER BEST FIT dokumentiert die Bewegungsstabilität eines Hundegeschirrs mit Sensor- und Videovergleich."
   >
-  <title>HARNELYZER</title>
+  <title>HARNELYZER BEST FIT</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
       <svg
         class="brand-mark"
         viewBox="0 0 2048 2048"
-        aria-label="Harnelyzer Logo"
+        aria-label="Harnelyzer Best Fit Logo"
         role="img"
       >
         <path fill="rgb(176,204,105)" d="M 1013.94 129.11 C 1041.17 127.348 1055.43 138.274 1078.67 150.853 C 1091.65 157.799 1104.69 164.644 1117.78 171.388 L 1305.51 270.604 C 1415.35 328.058 1524.84 386.189 1633.97 444.995 L 1720.88 490.705 C 1732.79 496.914 1755.2 507.903 1765.96 514.663 C 1773.95 519.743 1780.23 527.097 1784.01 535.779 C 1786.17 540.764 1787.88 546.279 1787.91 551.714 C 1788.14 594.778 1787.96 638.082 1787.94 681.129 L 1787.83 943.66 L 1787.82 1339.88 C 1787.72 1390.83 1788.07 1441.83 1787.85 1492.77 C 1787.82 1500.24 1787.4 1504.31 1784.6 1511.31 C 1781.56 1518.88 1773.25 1529.26 1766.09 1533.35 C 1753.62 1540.45 1740.18 1547.32 1727.4 1554.04 L 1649.13 1595.23 L 1359.79 1748.45 L 1155.94 1856.17 L 1086.94 1892.39 C 1070.03 1901.19 1052.7 1910.79 1034.95 1917.57 C 1007.35 1921.78 981.636 1903.65 957.754 1891.06 C 934.921 1879.24 912.174 1867.24 889.515 1855.09 L 709.941 1760.36 L 465.331 1630.88 C 427.988 1611.35 390.747 1591.62 353.611 1571.69 C 331.105 1559.84 307.035 1548.16 285.055 1535.51 C 273.381 1528.91 264.929 1517.81 261.678 1504.8 C 259.362 1495.43 260.22 1439.37 260.224 1427.19 L 260.168 1257.58 L 260.004 788.785 C 260.012 710.516 259.762 632.068 260.053 553.791 C 260.092 543.212 261.224 539.756 266.463 530.502 C 270.681 523.052 279.62 515.615 287.287 511.574 C 322.41 493.061 357.656 474.589 392.647 455.822 L 715.924 284.662 L 894.5 189.927 C 918.947 176.548 943.557 163.468 968.324 150.691 C 979.838 144.675 1002.7 131.812 1013.94 129.11 z" />
@@ -49,8 +49,8 @@
       </svg>
 
       <h1>
-        <span id="appName">HARNELYZER</span>
-        <span id="appVersion" class="version">v0.2.0</span>
+        <span id="appName">HARNELYZER BEST FIT</span>
+        <span id="appVersion" class="version">v3.0.0</span>
       </h1>
     </div>
 
@@ -58,11 +58,7 @@
       <span id="connectionStatus" class="connection-status" aria-live="polite">
         OFFLINE
       </span>
-      <button
-        id="btnConnect"
-        class="btn btn-connect"
-        type="button"
-      >
+      <button id="btnConnect" class="btn btn-connect" type="button">
         SENSOR
       </button>
     </div>
@@ -72,14 +68,10 @@
     <section class="sensor-panel" aria-labelledby="sensorPanelTitle">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">SENSOR-SETUP</p>
+          <p class="eyebrow">HARNELYZER SENSOR</p>
           <h2 id="sensorPanelTitle">AKTIVE SENSORROLLEN</h2>
         </div>
-        <button
-          id="btnCalib"
-          class="btn btn-calib"
-          type="button"
-        >
+        <button id="btnCalib" class="btn btn-calib" type="button">
           KALIBRIEREN
         </button>
       </div>
@@ -96,7 +88,7 @@
     <section class="routine-panel" aria-labelledby="routineTitle">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">GESCHIRR-CHECK</p>
+          <p class="eyebrow">SENSOR-VERGLEICH</p>
           <h2 id="routineTitle">MESSROUTINE</h2>
         </div>
         <span id="routineState" class="routine-state">SCHRITT 1 / 3</span>
@@ -147,29 +139,15 @@
       </div>
 
       <div class="routine-actions">
-        <button
-          id="btnStartReference"
-          class="btn btn-primary"
-          type="button"
-        >
+        <button id="btnStartReference" class="btn btn-primary" type="button">
           REFERENZ STARTEN
         </button>
 
-        <button
-          id="btnStartHarness"
-          class="btn btn-secondary"
-          type="button"
-          disabled
-        >
+        <button id="btnStartHarness" class="btn btn-secondary" type="button" disabled>
           TEST A STARTEN
         </button>
 
-        <button
-          id="btnFinishSession"
-          class="btn btn-stop"
-          type="button"
-          disabled
-        >
+        <button id="btnFinishSession" class="btn btn-stop" type="button" disabled>
           MESSUNG BEENDEN
         </button>
       </div>
@@ -180,6 +158,64 @@
         <span id="qualityIndicator" class="quality-indicator">
           QUALITÄT: WARTET
         </span>
+      </div>
+    </section>
+
+    <section class="best-fit-panel" aria-labelledby="bestFitTitle">
+      <div class="best-fit-heading">
+        <div>
+          <p class="eyebrow">MOBILE MESSSTATION</p>
+          <h2 id="bestFitTitle">BEST FIT KAMERA-CHECK</h2>
+        </div>
+        <span class="best-fit-badge">3 KAMERAS</span>
+      </div>
+
+      <p class="best-fit-intro">
+        Dokumentiere die Geschirrbewegung beim natürlichen geraden Laufen.
+        Die Station nutzt bis zu drei Smartphones: Seite, vorne links und hinten rechts.
+      </p>
+
+      <div class="best-fit-flow" aria-label="Ablauf der Kamera-Messung">
+        <div class="best-fit-flow__item">
+          <span class="best-fit-flow__number">01</span>
+          <strong>TEST ERSTELLEN</strong>
+          <span>Test-ID erzeugen und Handys per QR-Code verbinden.</span>
+        </div>
+
+        <div class="best-fit-flow__item">
+          <span class="best-fit-flow__number">02</span>
+          <strong>LAUF AUFNEHMEN</strong>
+          <span>Alle drei Perspektiven starten, Blitz und Klatschen als Zeitanker.</span>
+        </div>
+
+        <div class="best-fit-flow__item">
+          <span class="best-fit-flow__number">03</span>
+          <strong>VIDEOS PRÜFEN</strong>
+          <span>Gültige Durchgänge vergleichen und anschließend hochladen.</span>
+        </div>
+      </div>
+
+      <p class="best-fit-note">
+        <strong>Einfacher Start:</strong> Die Kamera-Messung funktioniert auch ohne
+        HARNELYZER Sensor. Der Sensor kann später als zusätzliche Bewegungszeitachse ergänzt werden.
+      </p>
+
+      <div class="best-fit-actions">
+        <a
+          class="btn btn-best-fit"
+          href="https://k9matics.github.io/-Best-fit/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="HARNELYZER Best Fit Kamera-Station in neuem Tab öffnen"
+        >
+          BEST FIT KAMERA-STATION ÖFFNEN
+        </a>
+      </div>
+
+      <div class="best-fit-footer">
+        <span>SMARTPHONES STATT SPEZIALKAMERAS</span>
+        <span>BLITZ + KLATSCH = ZEITANKER</span>
+        <span>UPLOAD NACH DER MESSUNG</span>
       </div>
     </section>
 
@@ -341,19 +377,11 @@
       </p>
 
       <div class="calibration-actions">
-        <button
-          id="btnCalibStart"
-          class="btn btn-primary"
-          type="button"
-        >
+        <button id="btnCalibStart" class="btn btn-primary" type="button">
           JETZT KALIBRIEREN
         </button>
 
-        <button
-          id="btnCalibClose"
-          class="btn btn-secondary"
-          type="submit"
-        >
+        <button id="btnCalibClose" class="btn btn-secondary" type="submit">
           ABBRECHEN
         </button>
       </div>
