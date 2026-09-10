@@ -640,6 +640,108 @@ const Analysis = (() => {
     return parts.join(" ");
   }
 
+  function detectMotionEvents(samples, role = "back-main") {
+    const packets = getSensorPackets(samples, role);
+    if (packets.length < 5) return [];
+
+    const dynamics = packets.map(calcDynamicMotion);
+    const baseline = mean(dynamics);
+    const sd = standardDeviation(dynamics);
+    const peakThreshold = Math.max(0.22, baseline + sd * 1.4);
+    const restThreshold = 0.05;
+    const minGapMs = 350;
+
+    const events = [];
+    let lastEventTs = -Infinity;
+    let restStartTs = null;
+    let restStartIndex = null;
+
+    packets.forEach((packet, index) => {
+      const ts = safeNumber(packet.timestamp);
+      const dynamicMotion = dynamics[index];
+      const roll = calcRoll(packet);
+      const pitch = calcPitch(packet);
+      const tilt = Math.sqrt(roll * roll + pitch * pitch);
+
+      if (dynamicMotion > peakThreshold && ts - lastEventTs > minGapMs) {
+        events.push({
+          timestamp: ts,
+          index,
+          type: "peak",
+          level: dynamicMotion > peakThreshold * 1.6 ? "alert" : "caution",
+          label: "BEWEGUNGSSPITZE",
+          detail: `${round(dynamicMotion, 2)} g dynamisch`
+        });
+        lastEventTs = ts;
+      } else if (tilt > 26 && ts - lastEventTs > minGapMs) {
+        events.push({
+          timestamp: ts,
+          index,
+          type: "tilt",
+          level: tilt > 42 ? "alert" : "caution",
+          label: "STARKE NEIGUNG",
+          detail: `${round(tilt, 1)}\u00b0 Neigung`
+        });
+        lastEventTs = ts;
+      }
+
+      if (dynamicMotion < restThreshold) {
+        if (restStartTs === null) {
+          restStartTs = ts;
+          restStartIndex = index;
+        }
+      } else if (restStartTs !== null) {
+        const restDuration = ts - restStartTs;
+        if (restDuration > 1500) {
+          events.push({
+            timestamp: restStartTs,
+            index: restStartIndex,
+            type: "rest",
+            level: "stable",
+            label: "RUHEPHASE",
+            detail: `${round(restDuration / 1000, 1)}s ruhig`
+          });
+        }
+        restStartTs = null;
+        restStartIndex = null;
+      }
+    });
+
+    return events.sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  function buildMotionSummary(session) {
+    const samples = Array.isArray(session?.samples) ? session.samples : [];
+    const role = session?.primaryRole || "back-main";
+    const metrics = buildMetrics(samples, role);
+    const events = detectMotionEvents(samples, role);
+
+    const counts = events.reduce((acc, event) => {
+      acc[event.type] = (acc[event.type] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      sessionId: session?.id || null,
+      sessionType: session?.type || "unknown",
+      sessionLabel: session?.label || "MESSUNG",
+      sampleCount: metrics.sampleCount,
+      durationMs: metrics.durationMs,
+      durationSeconds: round(metrics.durationMs / 1000, 1),
+      dynamicMotionMean: metrics.dynamicMotionMean,
+      rollVariation: metrics.rollVariation,
+      pitchVariation: metrics.pitchVariation,
+      cadence: metrics.cadence,
+      gait: metrics.gait,
+      quality: metrics.quality,
+      eventCount: events.length,
+      peakEvents: counts.peak || 0,
+      tiltEvents: counts.tilt || 0,
+      restEvents: counts.rest || 0,
+      events
+    };
+  }
+
   function getSupportedSensorRoles() {
     return [
       {
@@ -699,6 +801,8 @@ const Analysis = (() => {
     analyzeSession,
     compareSessions,
     summarize,
-    getSupportedSensorRoles
+    getSupportedSensorRoles,
+    detectMotionEvents,
+    buildMotionSummary
   };
 })();

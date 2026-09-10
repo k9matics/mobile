@@ -218,6 +218,78 @@ window.Scene3D = (() => {
     if (trailGeometry) refreshTrailGeometry();
   }
 
+  /**
+   * Rendert einen bestimmten Frame aus einer aufgezeichneten Messreihe,
+   * ohne den Live-Trail zu beeinflussen (siehe captureFrameSnapshot).
+   * Wird vom Motion-View-Fenster für Wiedergabe/Scrubbing genutzt.
+   */
+  function computeFrameWindow(samples, index, role) {
+    if (!Array.isArray(samples) || samples.length === 0) return [];
+    const clampedIndex = Math.max(0, Math.min(index, samples.length - 1));
+    const windowStart = Math.max(0, clampedIndex - MAX_TRAIL_POINTS + 1);
+    const windowSamples = samples.slice(windowStart, clampedIndex + 1);
+    const analysis = window.Analysis;
+
+    return windowSamples.map(rawSample => {
+      const normalized = analysis ? analysis.normalizePacket(rawSample, role) : rawSample;
+      const summary = analysis ? analysis.summarize(normalized) : null;
+      const base = ROLE_POSITIONS[normalized.role] || ROLE_POSITIONS[role] || ROLE_POSITIONS["back-main"];
+      const lateral = Math.max(-1.4, Math.min(1.4, Number(normalized.accX) || 0));
+      const motion = summary ? Math.max(0, Math.min(2.2, summary.motion - 1)) : 0;
+      const roll = summary ? summary.roll : 0;
+      const pitch = summary ? summary.pitch : 0;
+
+      return {
+        x: base.x + lateral * 0.32,
+        y: base.y + 0.06 + Math.max(0, motion) * 0.22,
+        z: base.z + Math.sin(roll * 0.05) * 0.12,
+        roll,
+        pitch
+      };
+    });
+  }
+
+  function renderFrameAt(samples, index, role) {
+    if (!ready) return null;
+    const points = computeFrameWindow(samples, index, role);
+    if (points.length === 0) return null;
+
+    trailPoints = points.map(point => ({ x: point.x, y: point.y, z: point.z }));
+    refreshTrailGeometry();
+
+    const last = points[points.length - 1];
+    if (bodyGroup && last) {
+      bodyGroup.rotation.z = (last.roll || 0) * (Math.PI / 180) * 0.4;
+      bodyGroup.rotation.x = (last.pitch || 0) * (Math.PI / 180) * 0.25;
+    }
+
+    return last;
+  }
+
+  function captureFrameSnapshot(samples, index, role) {
+    if (!ready) return null;
+
+    const backupTrail = trailPoints.slice();
+    const backupRotX = bodyGroup ? bodyGroup.rotation.x : 0;
+    const backupRotZ = bodyGroup ? bodyGroup.rotation.z : 0;
+
+    renderFrameAt(samples, index, role);
+    const snapshot = captureSnapshot();
+
+    trailPoints = backupTrail;
+    refreshTrailGeometry();
+    if (bodyGroup) {
+      bodyGroup.rotation.x = backupRotX;
+      bodyGroup.rotation.z = backupRotZ;
+    }
+
+    return snapshot;
+  }
+
+  function setAutoRotate(enabled) {
+    if (controls) controls.autoRotate = !!enabled;
+  }
+
   function resizeToContainer() {
     if (!renderer || !canvasEl) return;
     const parent = canvasEl.parentElement;
@@ -338,6 +410,9 @@ window.Scene3D = (() => {
     setActiveRole,
     reset,
     captureSnapshot,
+    renderFrameAt,
+    captureFrameSnapshot,
+    setAutoRotate,
     resizeToContainer,
     onReparent,
     destroy
