@@ -114,6 +114,12 @@ const App = (() => {
     els.btnCameraRecord = byId("btnCameraRecord");
     els.btnCameraDiscard = byId("btnCameraDiscard");
     els.btnCameraClose = byId("btnCameraClose");
+
+    els.moduleChips = byId("moduleChips");
+    els.moduleChipButtons = Array.from(document.querySelectorAll(".module-chip"));
+    els.moduleExplain = byId("moduleExplain");
+    els.btnOpenMotionView = byId("btnOpenMotionView");
+    els.btnResultMotionView = byId("btnResultMotionView");
   }
 
   function setVersion() {
@@ -257,6 +263,7 @@ const App = (() => {
 
     renderSensorSlots();
     renderRoutine();
+    renderModuleBar();
   }
 
   function renderSensorSlots() {
@@ -289,6 +296,72 @@ const App = (() => {
     if (state.connected && info.name && els.debugRaw) {
       els.debugRaw.textContent = `SENSOR: ${info.name} / ROLLE: ${getSelectedRole()}`;
     }
+  }
+
+  const MODULE_INFO = {
+    single: {
+      isReady: () => true,
+      readyText: "AKTIV",
+      lockedText: "AKTIV",
+      explainReady:
+        "SINGLE DEVICE ist aktiv: Ein Sensor genügt für Referenz-, Geschirr- und Vergleichsmessung.",
+      explainLocked: ""
+    },
+    sensor: {
+      isReady: () => state.connected,
+      readyText: "VERBUNDEN",
+      lockedText: "GETRENNT",
+      explainReady:
+        "SENSOR ist verbunden und liefert Live-Daten für Messung und Motion View.",
+      explainLocked:
+        "SENSOR ist getrennt. Verbinde ein Bluetooth-Gerät oder nutze DEMO, um Live-Daten zu erhalten."
+    },
+    multiview: {
+      isReady: () => false,
+      readyText: "AKTIV",
+      lockedText: "GESPERRT",
+      explainReady: "",
+      explainLocked:
+        "MULTI-VIEW benötigt mehrere gleichzeitig verbundene Sensoren an unterschiedlichen Körperpositionen. Dieses Modul ist in Vorbereitung."
+    },
+    certified: {
+      isReady: () => false,
+      readyText: "AKTIV",
+      lockedText: "GESPERRT",
+      explainReady: "",
+      explainLocked:
+        "CERTIFIED-Berichte erfordern eine kalibrierte Referenzmessung sowie eine freigeschaltete Zertifizierung. Dieses Modul ist in Vorbereitung."
+    }
+  };
+
+  function renderModuleBar() {
+    if (!els.moduleChipButtons?.length) return;
+
+    els.moduleChipButtons.forEach(button => {
+      const key = button.dataset.module;
+      const info = MODULE_INFO[key];
+      if (!info) return;
+
+      const ready = info.isReady();
+      const isSingle = key === "single";
+
+      button.classList.toggle("is-active", isSingle);
+      button.classList.toggle("is-ready", ready && !isSingle);
+      button.classList.toggle("is-locked", !ready && !isSingle);
+
+      const stateElement = button.querySelector(".module-chip__state");
+      if (stateElement) {
+        stateElement.textContent = ready ? info.readyText : info.lockedText;
+      }
+    });
+  }
+
+  function explainModule(key) {
+    const info = MODULE_INFO[key];
+    if (!info || !els.moduleExplain) return;
+
+    const ready = info.isReady();
+    els.moduleExplain.textContent = ready ? info.explainReady : info.explainLocked;
   }
 
   function getRoutineMode() {
@@ -842,6 +915,17 @@ const App = (() => {
     }
   }
 
+  function openMotionView(preferredValue) {
+    if (!window.MotionView) return;
+
+    const activeSession = state.measuring ? Storage.getActiveSession() : null;
+
+    MotionView.open({
+      activeSession,
+      preferredValue: preferredValue || undefined
+    });
+  }
+
   async function onConnectClick() {
     try {
       if (Sensor.isConnected()) {
@@ -1251,17 +1335,114 @@ const App = (() => {
       "raw"
     ];
 
-    const csvRows = rows.map(row =>
-      header
+    const toCsvLine = (columns, row) =>
+      columns
         .map(column => {
           const value = String(row[column] ?? "").replace(/"/g, "\"\"");
           return `"${value}"`;
         })
-        .join(",")
-    );
+        .join(",");
+
+    const csvRows = rows.map(row => toCsvLine(header, row));
+
+    const sections = [[header.join(","), ...csvRows].join("\n")];
+
+    if (window.Analysis && typeof Analysis.buildMotionSummary === "function") {
+      const summaryHeader = [
+        "sessionId",
+        "sessionType",
+        "sessionLabel",
+        "sampleCount",
+        "durationSeconds",
+        "dynamicMotionMean",
+        "rollVariation",
+        "pitchVariation",
+        "cadence",
+        "gait",
+        "qualityLabel",
+        "qualityScore",
+        "eventCount",
+        "peakEvents",
+        "tiltEvents",
+        "restEvents"
+      ];
+
+      const eventsHeader = [
+        "sessionId",
+        "sessionLabel",
+        "timestamp",
+        "type",
+        "level",
+        "label",
+        "detail"
+      ];
+
+      const summaryRows = [];
+      const eventRows = [];
+
+      const addMotionSections = session => {
+        if (!session?.samples?.length) return;
+
+        const summary = Analysis.buildMotionSummary(session);
+
+        summaryRows.push({
+          sessionId: summary.sessionId,
+          sessionType: summary.sessionType,
+          sessionLabel: summary.sessionLabel,
+          sampleCount: summary.sampleCount,
+          durationSeconds: summary.durationSeconds,
+          dynamicMotionMean: summary.dynamicMotionMean,
+          rollVariation: summary.rollVariation,
+          pitchVariation: summary.pitchVariation,
+          cadence: summary.cadence,
+          gait: summary.gait,
+          qualityLabel: summary.quality?.label,
+          qualityScore: summary.quality?.score,
+          eventCount: summary.eventCount,
+          peakEvents: summary.peakEvents,
+          tiltEvents: summary.tiltEvents,
+          restEvents: summary.restEvents
+        });
+
+        summary.events.forEach(event => {
+          eventRows.push({
+            sessionId: summary.sessionId,
+            sessionLabel: summary.sessionLabel,
+            timestamp: event.timestamp,
+            type: event.type,
+            level: event.level,
+            label: event.label,
+            detail: event.detail
+          });
+        });
+      };
+
+      addMotionSections(study.reference);
+      study.harnessTests.forEach(addMotionSections);
+
+      if (summaryRows.length > 0) {
+        sections.push(
+          [
+            "# MOTION-SUMMARY",
+            summaryHeader.join(","),
+            ...summaryRows.map(row => toCsvLine(summaryHeader, row))
+          ].join("\n")
+        );
+      }
+
+      if (eventRows.length > 0) {
+        sections.push(
+          [
+            "# MOTION-EVENTS",
+            eventsHeader.join(","),
+            ...eventRows.map(row => toCsvLine(eventsHeader, row))
+          ].join("\n")
+        );
+      }
+    }
 
     const blob = new Blob(
-      [[header.join(","), ...csvRows].join("\n")],
+      [sections.join("\n\n")],
       { type: "text/csv;charset=utf-8" }
     );
 
@@ -1289,6 +1470,19 @@ const App = (() => {
         ? Analysis.compareSessions(reference, harness)
         : null;
 
+      let motionSnapshot = null;
+      try {
+        if (window.MotionView && typeof window.MotionView.captureStaticSnapshot === "function") {
+          const motionSource = harness || reference;
+          motionSnapshot = motionSource
+            ? window.MotionView.captureStaticSnapshot(motionSource)
+            : null;
+        }
+      } catch (error) {
+        console.warn("MOTION SNAPSHOT FEHLER", error);
+        motionSnapshot = null;
+      }
+
       if (window.PDFExport && typeof window.PDFExport.create === "function") {
         window.PDFExport.create({
           appMeta: window.APP_META,
@@ -1297,7 +1491,8 @@ const App = (() => {
           harness,
           comparison,
           latest: state.latestPacket,
-          radarImage: els.resultRadarChart ? els.resultRadarChart.toDataURL("image/png") : null
+          radarImage: els.resultRadarChart ? els.resultRadarChart.toDataURL("image/png") : null,
+          motionSnapshot
         });
 
         setText(els.debugRaw, "PDF EXPORT GESTARTET");
@@ -1401,6 +1596,16 @@ const App = (() => {
     els.btnResultCsv?.addEventListener("click", downloadCsv);
     els.btnResultPdf?.addEventListener("click", exportPdf);
 
+    els.btnOpenMotionView?.addEventListener("click", () => openMotionView());
+    els.btnResultMotionView?.addEventListener("click", () => {
+      closeResultDialog();
+      openMotionView();
+    });
+
+    els.moduleChipButtons?.forEach(button => {
+      button.addEventListener("click", () => explainModule(button.dataset.module));
+    });
+
     els.scoreCards?.forEach(card => {
       card.addEventListener("click", openResultDialog);
       card.addEventListener("keydown", event => {
@@ -1472,11 +1677,14 @@ const App = (() => {
       }))
     );
 
+    window.MotionView?.init();
+
     bindEvents();
     setConnectionUi(false, "OFFLINE");
     resetScores();
     renderRoutine();
     renderSensorSlots();
+    renderModuleBar();
 
     if (els.hudRadar) {
       els.hudRadar.dataset.level = "stable";

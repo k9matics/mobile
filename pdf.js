@@ -223,6 +223,67 @@ window.PDFExport = (() => {
     return panelY + panelHeight + 6;
   }
 
+  function drawMotionSnapshot(doc, motionSnapshot, startY) {
+    const hasScene = Boolean(motionSnapshot?.scene) && motionSnapshot.scene !== "data:,";
+    const hasTimeline = Boolean(motionSnapshot?.timeline) && motionSnapshot.timeline !== "data:,";
+
+    if (!hasScene && !hasTimeline) {
+      return startY;
+    }
+
+    const panelHeight = 58;
+    let y = startY + 4;
+    if (y + panelHeight + 22 > 270) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("MOTION-SNAPSHOT", 14, y);
+    y += 4;
+
+    const panelX = 14;
+    const panelW = 182;
+    const panelY = y;
+    const pad = 4;
+    const innerH = panelHeight - pad * 2;
+
+    doc.setFillColor(9, 12, 12);
+    doc.roundedRect(panelX, panelY, panelW, panelHeight, 2, 2, "F");
+
+    if (hasScene && hasTimeline) {
+      const halfW = (panelW - pad * 3) / 2;
+      doc.addImage(motionSnapshot.scene, "PNG", panelX + pad, panelY + pad, halfW, innerH);
+      doc.addImage(motionSnapshot.timeline, "PNG", panelX + pad * 2 + halfW, panelY + pad, halfW, innerH);
+    } else if (hasScene) {
+      doc.addImage(motionSnapshot.scene, "PNG", panelX + pad, panelY + pad, panelW - pad * 2, innerH);
+    } else {
+      doc.addImage(motionSnapshot.timeline, "PNG", panelX + pad, panelY + pad, panelW - pad * 2, innerH);
+    }
+
+    y = panelY + panelHeight + 6;
+
+    const summary = motionSnapshot?.summary;
+    if (summary) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      const line = [
+        `Ereignisse ${summary.eventCount ?? 0}`,
+        `Spitzen ${summary.peakEvents ?? 0}`,
+        `Neigung ${summary.tiltEvents ?? 0}`,
+        `Ruhephasen ${summary.restEvents ?? 0}`,
+        `Kadenz ${summary.cadence ?? "-"}/min`
+      ].join("  \u00b7  ");
+      doc.text(line, 14, y);
+      doc.setTextColor(0, 0, 0);
+      y += 6;
+    }
+
+    return y;
+  }
+
   function drawFooter(doc, endY) {
     const footerY = Math.min(endY + 10, 287);
     doc.setFont("helvetica", "normal");
@@ -256,6 +317,7 @@ window.PDFExport = (() => {
     let y = drawOverview(doc, comparison, referenceSession, harnessSession, 34);
     y = drawVisualPanel(doc, payload?.radarImage, y);
     y = drawScoreTable(doc, comparison, y);
+    y = drawMotionSnapshot(doc, payload?.motionSnapshot, y);
     drawFooter(doc, y);
 
     const blob = doc.output("blob");
