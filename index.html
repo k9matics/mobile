@@ -65,6 +65,42 @@
   </header>
 
   <main id="mainContent" class="app-main">
+    <section class="module-bar" aria-labelledby="moduleBarTitle">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">VERFÜGBARE MODULE</p>
+          <h2 id="moduleBarTitle">SYSTEMSTATUS</h2>
+        </div>
+      </div>
+
+      <div id="moduleChips" class="module-chips" role="list">
+        <button type="button" class="module-chip is-active" data-module="single" role="listitem">
+          <span class="module-chip__dot"></span>
+          <span class="module-chip__name">SINGLE DEVICE</span>
+          <span class="module-chip__state">AKTIV</span>
+        </button>
+        <button type="button" class="module-chip is-locked" data-module="sensor" role="listitem">
+          <span class="module-chip__dot"></span>
+          <span class="module-chip__name">SENSOR</span>
+          <span class="module-chip__state">GETRENNT</span>
+        </button>
+        <button type="button" class="module-chip is-locked" data-module="multiview" role="listitem">
+          <span class="module-chip__dot"></span>
+          <span class="module-chip__name">MULTI-VIEW</span>
+          <span class="module-chip__state">GESPERRT</span>
+        </button>
+        <button type="button" class="module-chip is-locked" data-module="certified" role="listitem">
+          <span class="module-chip__dot"></span>
+          <span class="module-chip__name">CERTIFIED</span>
+          <span class="module-chip__state">GESPERRT</span>
+        </button>
+      </div>
+
+      <p id="moduleExplain" class="module-explain" aria-live="polite">
+        SINGLE DEVICE ist aktiv: Ein Sensor genügt für Referenz-, Geschirr- und Vergleichsmessung.
+      </p>
+    </section>
+
     <section class="sensor-panel" aria-labelledby="sensorPanelTitle">
       <div class="section-heading">
         <div>
@@ -273,7 +309,12 @@
           <h2 id="liveTitle">BEWEGUNGSSENSOR</h2>
         </div>
 
-        <span class="scene3d-hint">ZIEHEN ZUM DREHEN · PLATZHALTER-MODELL</span>
+        <div class="live-panel__tools">
+          <span class="scene3d-hint">ZIEHEN ZUM DREHEN · PLATZHALTER-MODELL</span>
+          <button id="btnOpenMotionView" class="btn btn-utility btn-motion-view" type="button">
+            MOTION VIEW
+          </button>
+        </div>
       </div>
 
       <div class="live-kpis">
@@ -517,12 +558,78 @@
       </table>
 
       <div class="result-dialog__actions">
+        <button id="btnResultMotionView" class="btn btn-utility" type="button">
+          MOTION VIEW
+        </button>
         <button id="btnResultCsv" class="btn btn-utility" type="button">
           CSV EXPORTIEREN
         </button>
         <button id="btnResultPdf" class="btn btn-utility" type="button">
           PDF EXPORTIEREN
         </button>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog id="motionViewDialog" class="motion-view-dialog" aria-labelledby="motionViewTitle">
+    <section class="motion-view__panel">
+      <header class="motion-view__header">
+        <div>
+          <p class="eyebrow">BEWEGUNGSANALYSE</p>
+          <h2 id="motionViewTitle">MOTION VIEW</h2>
+        </div>
+        <button
+          id="btnMotionViewClose"
+          class="btn btn-secondary motion-view__close"
+          type="button"
+          aria-label="Motion View schließen"
+        >
+          SCHLIESSEN
+        </button>
+      </header>
+
+      <div class="motion-view__source">
+        <label for="motionViewSource">MESSUNG</label>
+        <select id="motionViewSource" class="motion-view__select"></select>
+        <span id="motionViewQuality" class="quality-indicator">QUALITÄT: WARTET</span>
+      </div>
+
+      <p id="motionViewEmpty" class="motion-view__empty">
+        Noch keine Messung mit ausreichend Daten vorhanden. Starte zuerst eine Referenz- oder Geschirrmessung.
+      </p>
+
+      <div id="motionViewBody" class="motion-view__body" hidden>
+        <div class="motion-view__stage">
+          <div class="chart-container scene3d-container motion-view__scene" id="motionViewSceneSlot"></div>
+
+          <div class="motion-view__timeline-wrap">
+            <canvas id="motionViewTimeline" aria-label="Zeitleiste der Bewegungswerte"></canvas>
+          </div>
+
+          <div class="motion-view__controls">
+            <button id="btnMotionPlay" class="btn btn-primary motion-view__play" type="button">
+              ▶ ABSPIELEN
+            </button>
+
+            <input
+              id="motionViewScrubber"
+              class="motion-view__scrubber"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              step="1"
+              aria-label="Zeitpunkt in der Messung"
+            >
+
+            <span id="motionViewTime" class="motion-view__time">00:00 / 00:00</span>
+          </div>
+        </div>
+
+        <div class="motion-view__side">
+          <h3>BEWEGUNGSEREIGNISSE</h3>
+          <ol id="motionViewEvents" class="motion-view__events" aria-live="polite"></ol>
+        </div>
       </div>
     </section>
   </dialog>
@@ -538,6 +645,7 @@
   <script src="sensor.js"></script>
   <script src="scene3d.js"></script>
   <script src="pdf.js"></script>
+  <script src="motionview.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
