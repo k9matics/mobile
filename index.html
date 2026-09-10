@@ -1,543 +1,325 @@
 <!doctype html>
-<html lang="de" data-theme="dark">
+<html lang="de">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-  >
-  <meta name="theme-color" content="#080b0d">
-  <meta
-    name="description"
-    content="HARNELYZER BEST FIT dokumentiert die Bewegungsstabilität eines Hundegeschirrs mit Sensor- und Videovergleich."
-  >
-  <title>HARNELYZER BEST FIT</title>
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <meta name="theme-color" content="#08100d" />
+  <title>K9matics · Motion View</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap"
-    rel="stylesheet"
-  >
+  <link rel="stylesheet" href="./style.css" />
 
-  <link rel="stylesheet" href="style.css">
+  <!-- Für den 3D-Motion-View. Bei lokaler Installation kann diese Datei
+       alternativ aus dem Projekt selbst ausgeliefert werden. -->
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"
+  ></script>
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/OrbitControls.js"
+  ></script>
 </head>
+
 <body>
-  <a class="skip-link" href="#mainContent">Zum Inhalt springen</a>
-
-  <header class="app-header">
-    <div class="brand-lockup">
-      <svg
-        class="brand-mark"
-        viewBox="0 0 2048 2048"
-        aria-label="Harnelyzer Best Fit Logo"
-        role="img"
-      >
-        <path fill="rgb(176,204,105)" d="M 1013.94 129.11 C 1041.17 127.348 1055.43 138.274 1078.67 150.853 C 1091.65 157.799 1104.69 164.644 1117.78 171.388 L 1305.51 270.604 C 1415.35 328.058 1524.84 386.189 1633.97 444.995 L 1720.88 490.705 C 1732.79 496.914 1755.2 507.903 1765.96 514.663 C 1773.95 519.743 1780.23 527.097 1784.01 535.779 C 1786.17 540.764 1787.88 546.279 1787.91 551.714 C 1788.14 594.778 1787.96 638.082 1787.94 681.129 L 1787.83 943.66 L 1787.82 1339.88 C 1787.72 1390.83 1788.07 1441.83 1787.85 1492.77 C 1787.82 1500.24 1787.4 1504.31 1784.6 1511.31 C 1781.56 1518.88 1773.25 1529.26 1766.09 1533.35 C 1753.62 1540.45 1740.18 1547.32 1727.4 1554.04 L 1649.13 1595.23 L 1359.79 1748.45 L 1155.94 1856.17 L 1086.94 1892.39 C 1070.03 1901.19 1052.7 1910.79 1034.95 1917.57 C 1007.35 1921.78 981.636 1903.65 957.754 1891.06 C 934.921 1879.24 912.174 1867.24 889.515 1855.09 L 709.941 1760.36 L 465.331 1630.88 C 427.988 1611.35 390.747 1591.62 353.611 1571.69 C 331.105 1559.84 307.035 1548.16 285.055 1535.51 C 273.381 1528.91 264.929 1517.81 261.678 1504.8 C 259.362 1495.43 260.22 1439.37 260.224 1427.19 L 260.168 1257.58 L 260.004 788.785 C 260.012 710.516 259.762 632.068 260.053 553.791 C 260.092 543.212 261.224 539.756 266.463 530.502 C 270.681 523.052 279.62 515.615 287.287 511.574 C 322.41 493.061 357.656 474.589 392.647 455.822 L 715.924 284.662 L 894.5 189.927 C 918.947 176.548 943.557 163.468 968.324 150.691 C 979.838 144.675 1002.7 131.812 1013.94 129.11 z" />
-        <path fill="rgb(8,11,14)" d="M 968.868 1286.95 C 970.95 1292.78 969.192 1356.32 969.084 1366.23 C 949.889 1397.98 928.618 1428.11 908.877 1459.19 C 885.352 1496.23 862.911 1532.91 838.622 1569.61 C 862.147 1595.54 887.359 1619.97 912.083 1644.75 C 917.039 1649.72 922.122 1654.54 927.504 1659.05 C 954.382 1632.47 979.968 1605.21 1007.01 1578.64 C 976.236 1527.21 923.768 1485.75 1018.72 1494.26 C 1035.22 1495.74 1054.28 1492.58 1071.12 1495.01 C 1084.35 1496.93 1083.96 1502.64 1083.92 1513.1 C 1073.59 1532 1054.35 1559.39 1041.85 1578.46 C 1068.17 1604.31 1095.77 1633.65 1121.64 1660.25 C 1150.01 1630.1 1181.1 1599.12 1210.4 1569.78 C 1205.5 1563.58 1200.38 1556.21 1196.18 1549.46 C 1157.83 1487.88 1116.23 1427.58 1078.84 1365.48 L 1079.12 1286.9 C 1095.83 1307.92 1115.98 1329.82 1133.51 1350.85 L 1254.5 1498.68 C 1258.01 1503.08 1271.8 1520.92 1275.09 1523.15 C 1284.66 1529.63 1304.83 1536.09 1316.13 1540.58 C 1349.59 1553.89 1384.78 1564.89 1417.98 1578.6 C 1383.66 1599.03 1336.97 1622.55 1301.04 1641.59 L 1078.27 1759.32 C 1078.12 1736.06 1078.14 1712.79 1078.33 1689.53 C 1060.12 1671.95 1041.4 1654.39 1024.2 1635.88 C 1006.99 1654.15 987.897 1671.97 969.802 1689.56 C 970.223 1712.57 970.011 1736.35 970.085 1759.41 L 753.962 1644.91 C 712.372 1622.88 670.492 1601.44 629.637 1578.06 C 646.888 1570.96 664.134 1565.24 681.54 1558.71 L 772.444 1524.42 C 787.642 1506.48 802.486 1486.94 817.525 1468.65 C 867.415 1407.62 917.865 1347.05 968.868 1286.95 z" />
-        <path fill="rgb(8,11,14)" d="M 379.189 814.138 C 445.303 813.326 512.647 814.071 578.939 813.856 C 578.897 972.659 577.437 1134.13 579.265 1292.7 C 556.471 1305.16 533.586 1317.45 510.612 1329.58 C 467.278 1353.19 422.831 1376.45 379.104 1399.39 C 377.893 1328.53 378.948 1253.95 378.924 1182.81 L 379.189 814.138 z" />
-        <path fill="rgb(8,11,14)" d="M 1469.04 814.065 C 1534.92 813.372 1602.38 813.964 1668.31 814.085 L 1668.67 1134.44 C 1668.73 1222.3 1669.68 1311.56 1668.79 1399.29 L 1468.97 1292.65 L 1469.04 814.065 z" />
-        <path fill="rgb(8,11,14)" d="M 649.521 451.912 C 654.858 452.411 938.466 606.435 969.233 622.924 C 970.177 666.678 969.938 716.137 969.142 759.964 C 953.556 753.23 930.288 740.218 913.741 732.581 C 857.257 706.512 818.312 703.707 758.5 703.296 L 379.198 702.941 L 379.037 594.962 C 468.879 546.677 559.042 498.992 649.521 451.912 z" />
-        <path fill="rgb(8,11,14)" d="M 691.218 970.522 C 703.852 976.447 724.701 988.317 737.932 995.435 C 765.935 1010.5 800.117 1026.6 825.948 1043.99 C 830.627 1047.13 853.011 1075.23 857.731 1081.01 L 903.012 1136.05 C 912.383 1147.61 921.475 1160.02 931.329 1171.01 C 862.531 1243.13 795.599 1317.82 727.315 1390.49 C 697.586 1422.13 666.565 1449.22 634.377 1478.26 C 610.708 1500.37 586.542 1521.99 563.003 1544.22 C 551.753 1539.28 536.532 1530.74 525.225 1524.84 C 502.495 1513.08 479.887 1501.09 457.404 1488.87 C 473.044 1481.18 490.525 1471.06 506.327 1462.8 L 690.744 1364.68 C 691.479 1234.02 689.265 1100.92 691.218 970.522 z" />
-        <path fill="rgb(8,11,14)" d="M 1356.69 971.989 C 1357.61 983.989 1357.01 1003.9 1357.01 1016.34 L 1357.06 1099.32 L 1356.96 1364.93 C 1381.61 1376.63 1409.52 1392.34 1434 1405.31 L 1589.64 1488.89 C 1581.67 1493.96 1567.33 1501.2 1558.72 1505.84 L 1485.16 1544.5 C 1462.09 1523.88 1438.34 1501.25 1415.32 1480.21 C 1390.84 1458.49 1365.87 1435.35 1342.27 1412.6 C 1328.86 1399.67 1315.41 1384.11 1302.56 1370.45 C 1276.22 1342.61 1250.07 1314.59 1224.11 1286.39 C 1188.01 1247.91 1152.18 1209.16 1116.64 1170.15 C 1133.82 1148.62 1152.62 1126.84 1170.27 1105.3 C 1184.05 1088.49 1205.57 1060.56 1220.66 1046.51 C 1225.26 1042.23 1259.04 1024.56 1267.22 1020.14 C 1296.88 1003.78 1326.71 987.731 1356.69 971.989 z" />
-        <path fill="rgb(8,11,14)" d="M 1354.72 474.957 L 1356.43 475.298 C 1357.48 480.721 1356.94 492.936 1356.93 499.144 L 1356.94 541.19 L 1357.04 703.257 C 1236.31 703.286 1190.9 697.67 1079.92 759.851 L 1079.45 759.371 C 1078.15 754.285 1078.51 725.598 1078.5 718.924 C 1078.42 687.121 1078.52 655.318 1078.8 623.516 C 1093.82 614.784 1109.63 607.039 1124.97 598.835 L 1179.2 569.193 C 1236.54 538.065 1296.84 504.814 1354.72 474.957 z" />
-        <path fill="rgb(8,11,14)" d="M 1469.03 489.454 C 1515.36 512.293 1560.57 537.705 1606.33 561.554 C 1620.46 568.924 1655.77 589.002 1668.86 593.816 L 1668.81 702.982 L 1469.02 703.052 L 1469.03 489.454 z" />
-        <path fill="rgb(8,11,14)" d="M 691.256 814.495 C 745.935 814.127 801.762 811.339 854.402 829.127 C 870.544 834.581 883.309 841.57 898.459 848.369 C 927.322 861.322 944.511 870.255 969.684 889.652 L 969.88 991.824 C 969.901 1006.45 970.662 1033.89 969.374 1047.76 L 969.164 1048.29 C 965.364 1045.42 963.403 1042.79 960.331 1039.2 C 944.051 1021.51 928.201 1001.54 912.415 983.261 C 851.839 913.12 781.355 891.493 690.989 893.198 L 691.256 814.495 z" />
-        <path fill="rgb(8,11,14)" d="M 1316.36 814.492 L 1356.87 814.805 L 1356.78 893.226 C 1222.61 891.038 1180.22 929.035 1099.21 1025.58 C 1093.43 1032.84 1085.22 1041.74 1078.99 1048.88 C 1076.92 999.33 1078.08 940.983 1078.04 890.82 C 1101.87 871.833 1117.72 862.45 1145.33 849.871 C 1159.12 843.587 1170.96 836.43 1185.8 830.801 C 1228.53 814.588 1271.57 814.724 1316.36 814.492 z" />
-        <path fill="rgb(8,11,14)" d="M 967.874 282.904 C 967.934 282.957 968.002 283 968.053 283.061 C 971.014 286.612 969.336 469.392 969.259 494.111 C 926.706 471.664 884.421 448.713 842.413 425.261 C 822.777 413.344 793.366 398.711 772.281 387.206 C 788.578 376.903 818.121 362.351 835.991 352.881 L 967.874 282.904 z" />
-        <path fill="rgb(8,11,14)" d="M 1079 283.43 C 1100.43 292.63 1127.81 308.136 1148.99 319.28 L 1275.62 386.85 C 1252.82 398.706 1228.91 412.476 1206.23 424.929 L 1078.14 494.522 C 1079.21 424.299 1077.91 353.745 1079 283.43 z" />
-      </svg>
-
-      <h1>
-        <span id="appName">HARNELYZER BEST FIT</span>
-        <span id="appVersion" class="version">v3.0.0</span>
-      </h1>
-    </div>
-
-    <div class="header-actions">
-      <span id="connectionStatus" class="connection-status" aria-live="polite">
-        OFFLINE
-      </span>
-      <button id="btnConnect" class="btn btn-connect" type="button">
-        SENSOR
-      </button>
-    </div>
-  </header>
-
-  <main id="mainContent" class="app-main">
-    <section class="sensor-panel" aria-labelledby="sensorPanelTitle">
-      <div class="section-heading">
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">K9</span>
         <div>
-          <p class="eyebrow">HARNELYZER SENSOR</p>
-          <h2 id="sensorPanelTitle">AKTIVE SENSORROLLEN</h2>
+          <p class="eyebrow">MOTION ANALYSIS</p>
+          <h1>K9matics</h1>
         </div>
-        <button id="btnCalib" class="btn btn-calib" type="button">
-          KALIBRIEREN
-        </button>
       </div>
 
-      <div id="sensorSlots" class="sensor-slots" aria-live="polite">
-        <div class="sensor-slot is-active">
-          <span class="sensor-dot"></span>
-          <span class="sensor-role">RÜCKEN / GESCHIRR</span>
-          <span class="sensor-state">BEREIT</span>
-        </div>
+      <div class="connection-cluster" aria-label="Sensorstatus">
+        <span id="connectionDot" class="status-dot is-offline"></span>
+        <span id="connectionLabel">SENSOR NICHT VERBUNDEN</span>
+      </div>
+    </header>
+
+    <section class="session-strip" aria-label="Aktuelle Sitzung">
+      <div class="session-meta">
+        <p class="eyebrow">AKTIVE MESSUNG</p>
+        <h2 id="sessionLabel">REFERENZ OHNE GESCHIRR</h2>
+        <p id="sessionSubline">Noch keine Sensordaten aufgezeichnet.</p>
+      </div>
+
+      <div class="session-actions">
+        <button id="startRecordingBtn" class="button button-primary" type="button">
+          Messung starten
+        </button>
+        <button id="stopRecordingBtn" class="button button-danger" type="button" disabled>
+          Messung stoppen
+        </button>
       </div>
     </section>
 
-    <section class="routine-panel" aria-labelledby="routineTitle">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">SENSOR-VERGLEICH</p>
-          <h2 id="routineTitle">MESSROUTINE</h2>
+    <section class="dashboard-grid">
+      <article class="panel panel-motion">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">LIVE / WIEDERGABE</p>
+            <h2>MOTION VIEW</h2>
+          </div>
+
+          <div id="playbackBadge" class="status-badge status-badge-muted">
+            BEREIT
+          </div>
         </div>
-        <span id="routineState" class="routine-state">SCHRITT 1 / 3</span>
-      </div>
 
-      <ol class="routine-steps" aria-label="Messablauf">
-        <li id="stepReference" class="routine-step is-active">
-          <span class="step-number">01</span>
-          <div class="step-copy">
-            <strong>REFERENZ</strong>
-            <span>Ohne Geschirr, Sensor sicher befestigt.</span>
+        <div class="motion-stage">
+          <div id="threeContainer" class="three-container" aria-label="3D Bewegungsansicht">
+            <div id="threeFallback" class="three-fallback">
+              <span class="fallback-icon">◌</span>
+              <p>3D-Ansicht wird geladen …</p>
+            </div>
           </div>
-          <span id="referenceState" class="step-state">OFFEN</span>
-        </li>
 
-        <li id="stepHarness" class="routine-step">
-          <span class="step-number">02</span>
-          <div class="step-copy">
-            <strong>GESCHIRR-TEST</strong>
-            <span>Gleiche natürliche Runde mit Geschirr.</span>
+          <div class="stage-overlay stage-overlay-top">
+            <span id="playbackTime">00:00.000</span>
+            <span id="playbackGait">RUHE</span>
           </div>
-          <span id="harnessState" class="step-state">GESPERRT</span>
-        </li>
 
-        <li id="stepCompare" class="routine-step">
-          <span class="step-number">03</span>
-          <div class="step-copy">
-            <strong>VERGLEICH</strong>
-            <span>Passform und Laufbild gegen Referenz.</span>
+          <div class="stage-overlay stage-overlay-bottom">
+            <span id="activeEventLabel">Warte auf Messdaten</span>
           </div>
-          <span id="compareState" class="step-state">WARTET</span>
-        </li>
-      </ol>
-
-      <div id="routineGuide" class="routine-guide" aria-live="polite">
-        <div class="guide-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="8 5 16 12 8 19"></polyline>
-          </svg>
         </div>
-        <div>
-          <h3 id="guideTitle">REFERENZ OHNE GESCHIRR</h3>
-          <p id="guideText">
-            Befestige den Sensor sicher am Rücken. Lass den Hund anschließend
-            20–40 Sekunden entspannt und natürlich laufen.
+
+        <div class="transport" aria-label="Wiedergabesteuerung">
+          <button id="stepBackBtn" class="icon-button" type="button" title="Zurück">
+            <span aria-hidden="true">↤</span>
+            <span class="sr-only">Zurück</span>
+          </button>
+
+          <button id="playPauseBtn" class="play-button" type="button" title="Wiedergabe">
+            <span id="playPauseIcon" aria-hidden="true">▶</span>
+            <span class="sr-only">Wiedergabe starten oder pausieren</span>
+          </button>
+
+          <button id="stepForwardBtn" class="icon-button" type="button" title="Vor">
+            <span aria-hidden="true">↦</span>
+            <span class="sr-only">Vor</span>
+          </button>
+
+          <div class="playback-speed">
+            <label for="playbackSpeed">Tempo</label>
+            <select id="playbackSpeed">
+              <option value="0.5">0,5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="timeline-wrap">
+          <div class="timeline-label-row">
+            <span>ZEITACHSE</span>
+            <span id="timelineDuration">00:00.000</span>
+          </div>
+
+          <div id="timeline" class="timeline" role="slider" tabindex="0"
+            aria-label="Zeitachse der Bewegungsmessung"
+            aria-valuemin="0"
+            aria-valuemax="0"
+            aria-valuenow="0">
+            <div id="timelineTrack" class="timeline-track">
+              <div id="timelineProgress" class="timeline-progress"></div>
+              <div id="timelineEvents" class="timeline-events"></div>
+              <div id="timelineCursor" class="timeline-cursor"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <aside class="kpi-column" aria-label="Bewegungskennzahlen">
+        <article class="panel kpi-card kpi-card-main">
+          <p class="eyebrow">BEWEGUNG</p>
+          <div class="kpi-main-row">
+            <strong id="motionValue">0</strong>
+            <span>/ 100</span>
+          </div>
+          <div class="meter">
+            <div id="motionMeter" class="meter-fill meter-cyan"></div>
+          </div>
+          <p id="motionStatus" class="kpi-caption">Keine Messdaten</p>
+        </article>
+
+        <article class="panel kpi-card">
+          <p class="eyebrow">ORIENTIERUNG</p>
+          <div class="dual-kpi">
+            <div>
+              <span>ROLL</span>
+              <strong id="rollValue">0,0°</strong>
+            </div>
+            <div>
+              <span>PITCH</span>
+              <strong id="pitchValue">0,0°</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel kpi-card">
+          <p class="eyebrow">GANG & RHYTHMUS</p>
+          <div class="dual-kpi">
+            <div>
+              <span>GANGART</span>
+              <strong id="gaitValue">RUHE</strong>
+            </div>
+            <div>
+              <span>KADENZ</span>
+              <strong id="cadenceValue">0/min</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel kpi-card">
+          <p class="eyebrow">STABILITÄT</p>
+          <div class="score-line">
+            <span>Bewegung</span>
+            <strong id="stabilityValue">—</strong>
+          </div>
+          <div class="score-line">
+            <span>Symmetrie</span>
+            <strong id="symmetryValue">—</strong>
+          </div>
+          <div class="score-line">
+            <span>Regelmäßigkeit</span>
+            <strong id="regularityValue">—</strong>
+          </div>
+        </article>
+
+        <article class="panel kpi-card">
+          <p class="eyebrow">DATENQUALITÄT</p>
+          <div class="quality-row">
+            <strong id="qualityValue">0 %</strong>
+            <span id="qualityLabel" class="quality-label is-unavailable">
+              NICHT VERFÜGBAR
+            </span>
+          </div>
+          <p id="qualityAdvice" class="kpi-caption">
+            Starte eine Messung, um die Datenqualität zu bewerten.
           </p>
-        </div>
-      </div>
-
-      <div class="routine-actions">
-        <button id="btnStartReference" class="btn btn-primary" type="button">
-          REFERENZ STARTEN
-        </button>
-
-        <button id="btnStartHarness" class="btn btn-secondary" type="button" disabled>
-          TEST A STARTEN
-        </button>
-
-        <button id="btnFinishSession" class="btn btn-stop" type="button" disabled>
-          MESSUNG BEENDEN
-        </button>
-      </div>
-
-      <div class="routine-meta">
-        <span id="activeSessionLabel">KEINE MESSUNG AKTIV</span>
-        <span id="sessionTimer">00:00</span>
-        <span id="qualityIndicator" class="quality-indicator">
-          QUALITÄT: WARTET
-        </span>
-      </div>
+        </article>
+      </aside>
     </section>
 
-    <section class="best-fit-panel" aria-labelledby="bestFitTitle">
-      <div class="best-fit-heading">
-        <div>
-          <p class="eyebrow">MOBILE MESSSTATION</p>
-          <h2 id="bestFitTitle">BEST FIT KAMERA-CHECK</h2>
+    <section class="lower-grid">
+      <article class="panel event-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">ANALYSE</p>
+            <h2>EREIGNISSE</h2>
+          </div>
+          <span id="eventCount" class="counter">0</span>
         </div>
-        <span class="best-fit-badge">3 KAMERAS</span>
-      </div>
 
-      <p class="best-fit-intro">
-        Dokumentiere die Geschirrbewegung beim natürlichen geraden Laufen.
-        Die Station nutzt bis zu drei Smartphones: Seite, vorne links und hinten rechts.
+        <div id="eventList" class="event-list" aria-live="polite">
+          <div class="empty-state">
+            <span class="empty-state-icon">⌁</span>
+            <p>Noch keine Ereignisse erkannt.</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel summary-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">SITZUNGSÜBERSICHT</p>
+            <h2>BEWEGUNGSPROFIL</h2>
+          </div>
+        </div>
+
+        <dl class="summary-list">
+          <div>
+            <dt>Dauer</dt>
+            <dd id="summaryDuration">—</dd>
+          </div>
+          <div>
+            <dt>Proben</dt>
+            <dd id="summarySamples">—</dd>
+          </div>
+          <div>
+            <dt>Wiederholte Ereignisse</dt>
+            <dd id="summaryEvents">—</dd>
+          </div>
+          <div>
+            <dt>Sensorrolle</dt>
+            <dd id="summaryRole">BACK-MAIN</dd>
+          </div>
+        </dl>
+
+        <div class="export-row">
+          <button id="exportCsvBtn" class="button button-secondary" type="button">
+            CSV exportieren
+          </button>
+          <button id="exportPdfBtn" class="button button-secondary" type="button">
+            PDF exportieren
+          </button>
+        </div>
+      </article>
+
+      <article class="panel module-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">SYSTEM</p>
+            <h2>MODULSTATUS</h2>
+          </div>
+        </div>
+
+        <ul class="module-list">
+          <li>
+            <span class="module-dot is-offline" id="sensorModuleDot"></span>
+            <span>Sensor</span>
+            <strong id="sensorModuleLabel">OFFLINE</strong>
+          </li>
+          <li>
+            <span class="module-dot is-ready"></span>
+            <span>Single Device</span>
+            <strong>BEREIT</strong>
+          </li>
+          <li>
+            <span class="module-dot is-unavailable"></span>
+            <span>Multi-View</span>
+            <strong>N. V.</strong>
+          </li>
+          <li>
+            <span class="module-dot is-ready"></span>
+            <span>Certified</span>
+            <strong>LOKAL</strong>
+          </li>
+        </ul>
+      </article>
+    </section>
+
+    <footer class="app-footer">
+      <p>
+        Bewegungsanalyse dient der Verlaufsdokumentation und ersetzt keine
+        tierärztliche Diagnose.
       </p>
-
-      <div class="best-fit-flow" aria-label="Ablauf der Kamera-Messung">
-        <div class="best-fit-flow__item">
-          <span class="best-fit-flow__number">01</span>
-          <strong>TEST ERSTELLEN</strong>
-          <span>Test-ID erzeugen und Handys per QR-Code verbinden.</span>
-        </div>
-
-        <div class="best-fit-flow__item">
-          <span class="best-fit-flow__number">02</span>
-          <strong>LAUF AUFNEHMEN</strong>
-          <span>Alle drei Perspektiven starten, Blitz und Klatschen als Zeitanker.</span>
-        </div>
-
-        <div class="best-fit-flow__item">
-          <span class="best-fit-flow__number">03</span>
-          <strong>VIDEOS PRÜFEN</strong>
-          <span>Gültige Durchgänge vergleichen und anschließend hochladen.</span>
-        </div>
-      </div>
-
-      <p class="best-fit-note">
-        <strong>Einfacher Start:</strong> Die Kamera-Messung funktioniert auch ohne
-        HARNELYZER Sensor. Der Sensor kann später als zusätzliche Bewegungszeitachse ergänzt werden.
-      </p>
-
-      <div class="best-fit-actions">
-        <a
-          class="btn btn-best-fit"
-          href="https://k9matics.github.io/-Best-fit/"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="HARNELYZER Best Fit Kamera-Station in neuem Tab öffnen"
-        >
-          BEST FIT KAMERA-STATION ÖFFNEN
-        </a>
-      </div>
-
-      <div class="best-fit-footer">
-        <span>SMARTPHONES STATT SPEZIALKAMERAS</span>
-        <span>BLITZ + KLATSCH = ZEITANKER</span>
-        <span>UPLOAD NACH DER MESSUNG</span>
-      </div>
-    </section>
-
-    <section class="score-panel" aria-labelledby="scoreTitle">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">ENDNUTZER-ERGEBNIS</p>
-          <h2 id="scoreTitle">GESCHIRR-BEWERTUNG</h2>
-        </div>
-        <span id="comparisonStatus" class="comparison-status">
-          REFERENZ AUSSTEHEND
-        </span>
-      </div>
-
-      <div class="score-grid">
-        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Passform öffnen">
-          <span>PASSFORM</span>
-          <strong id="scoreFit">—</strong>
-          <small id="scoreFitLabel">REFERENZ ERFORDERLICH</small>
-        </article>
-
-        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Stabilität öffnen">
-          <span>STABILITÄT</span>
-          <strong id="scoreStability">—</strong>
-          <small id="scoreStabilityLabel">—</small>
-        </article>
-
-        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Laufbild öffnen">
-          <span>LAUFBILD</span>
-          <strong id="scoreMovement">—</strong>
-          <small id="scoreMovementLabel">—</small>
-        </article>
-
-        <article class="score-card" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Testbericht zu Symmetrie öffnen">
-          <span>SYMMETRIE</span>
-          <strong id="scoreSymmetry">—</strong>
-          <small id="scoreSymmetryLabel">—</small>
-        </article>
-      </div>
-
-      <button id="btnOpenResult" class="btn btn-secondary result-open-btn" type="button">
-        TESTBERICHT ANZEIGEN
-      </button>
-
-      <div id="resultSummary" class="result-summary" aria-live="polite">
-        Starte mit einer Referenzmessung ohne Geschirr. Die App vergleicht
-        später nur ausreichend ähnliche Bewegungsphasen.
-      </div>
-    </section>
-
-    <section class="live-panel" aria-labelledby="liveTitle">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">TECHNISCHE LIVE-ANSICHT</p>
-          <h2 id="liveTitle">BEWEGUNGSSENSOR</h2>
-        </div>
-
-        <span class="scene3d-hint">ZIEHEN ZUM DREHEN · PLATZHALTER-MODELL</span>
-      </div>
-
-      <div class="live-kpis">
-        <div class="live-kpi">
-          <span>GANGART</span>
-          <strong id="kpiGait">—</strong>
-        </div>
-
-        <div class="live-kpi">
-          <span>RHYTHMUS</span>
-          <strong id="kpiCadence">0</strong>
-        </div>
-
-        <div class="live-kpi">
-          <span>REGELMÄSSIG</span>
-          <strong id="kpiRegularity">0%</strong>
-        </div>
-
-        <div class="live-kpi">
-          <span>ASYMMETRIE</span>
-          <strong id="kpiAsymmetry">0%</strong>
-        </div>
-      </div>
-
-      <div
-        id="hudRadar"
-        class="hud-radar"
-        role="button"
-        tabindex="0"
-        aria-label="Kamera für Gangaufnahme öffnen"
-        aria-haspopup="dialog"
-      >
-        <div class="radar-grid radar-grid-horizontal"></div>
-        <div class="radar-grid radar-grid-vertical"></div>
-        <div class="radar-ring radar-ring-large"></div>
-        <div class="radar-ring radar-ring-small"></div>
-        <div class="radar-crosshair" aria-hidden="true">
-          <span class="radar-crosshair__horizontal"></span>
-          <span class="radar-crosshair__vertical"></span>
-          <span class="radar-crosshair__center"></span>
-        </div>
-        <span class="hud-label">HARNESS MOTION FIELD · KAMERA</span>
-        <span id="tiltValue" class="hud-tilt">TILT: 0.0°</span>
-        <span id="hudCoords" class="hud-coords">X:0.00 Y:0.00</span>
-      </div>
-
-      <div class="chart-container scene3d-container" id="scene3dHomeSlot">
-        <canvas id="scene3dCanvas" aria-label="3D Bewegungsansicht mit Platzhaltermodell"></canvas>
-      </div>
-
-      <div class="analysis-panel">
-        <div class="analysis-row">
-          <span>BEWEGUNGSINTENSITÄT</span>
-          <strong id="motionValue">0.00 g</strong>
-        </div>
-
-        <div class="analysis-row">
-          <span>NEIGUNG LINKS / RECHTS</span>
-          <strong id="rollValue">0.0°</strong>
-        </div>
-
-        <div class="analysis-row">
-          <span>NEIGUNG VORNE / HINTEN</span>
-          <strong id="pitchValue">0.0°</strong>
-        </div>
-
-        <div class="analysis-row">
-          <span>STATUS</span>
-          <strong id="analysisStatus">BEREIT</strong>
-        </div>
-      </div>
-
-      <p id="debugRaw" class="debug-raw">NO DATA</p>
-    </section>
-
-    <section class="utility-actions" aria-label="Datenaktionen">
-      <button id="btnDemo" class="btn btn-utility" type="button">
-        DEMO
-      </button>
-
-      <button id="btnResetStudy" class="btn btn-utility btn-danger" type="button">
-        NEUSTART
-      </button>
-    </section>
+    </footer>
   </main>
 
-  <dialog id="calibrationDialog" class="calibration-dialog">
-    <form method="dialog" class="calibration-box">
-      <p class="eyebrow">SENSOR-AUSRICHTUNG</p>
-      <h2>KALIBRIERUNG</h2>
+  <template id="eventTemplate">
+    <button class="event-item" type="button">
+      <span class="event-marker"></span>
+      <span class="event-content">
+        <strong class="event-title"></strong>
+        <small class="event-description"></small>
+      </span>
+      <time class="event-time"></time>
+    </button>
+  </template>
 
-      <div class="calibration-steps">
-        <p><span>1</span> Sensor am Rücken gerade und fest befestigen.</p>
-        <p><span>2</span> Hund ruhig und eben hinstellen lassen.</p>
-        <p><span>3</span> Geschirr und Sensor drei Sekunden nicht bewegen.</p>
-        <p><span>4</span> Dann Kalibrierung starten.</p>
-      </div>
-
-      <p id="calibrationHelp" class="calibration-help">
-        Der Sensor nutzt diese ruhige Position als Ausgangslage.
-      </p>
-
-      <div class="calibration-actions">
-        <button id="btnCalibStart" class="btn btn-primary" type="button">
-          JETZT KALIBRIEREN
-        </button>
-
-        <button id="btnCalibClose" class="btn btn-secondary" type="submit">
-          ABBRECHEN
-        </button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="cameraDialog" class="camera-dialog" aria-labelledby="cameraTitle">
-    <section class="camera-dialog__panel">
-      <header class="camera-dialog__header">
-        <div>
-          <p class="eyebrow">VIDEO-REFERENZ</p>
-          <h2 id="cameraTitle">GANGAUFNAHME</h2>
-        </div>
-        <button
-          id="btnCameraClose"
-          class="btn btn-secondary camera-close"
-          type="button"
-          aria-label="Gangaufnahme schließen"
-        >
-          SCHLIESSEN
-        </button>
-      </header>
-
-      <p class="camera-dialog__guide">
-        Seitlich filmen · alle Pfoten sichtbar · gerade, möglichst ebene Strecke.
-        Das Video bleibt auf diesem Gerät.
-      </p>
-
-      <div class="camera-stage">
-        <video id="cameraPreview" class="camera-preview" autoplay muted playsinline></video>
-        <video id="cameraPlayback" class="camera-playback" controls playsinline hidden></video>
-
-        <div class="camera-hud" aria-hidden="true">
-          <span class="camera-hud__label">SENSOR-REFERENZ</span>
-          <span class="camera-hud__crosshair">
-            <i></i><b></b><em></em>
-          </span>
-          <span id="cameraSensorState" class="camera-hud__state">BEREIT</span>
-        </div>
-      </div>
-
-      <p id="cameraStatus" class="camera-status" role="status" aria-live="polite">
-        Kamera ist noch nicht aktiviert.
-      </p>
-
-      <div class="camera-dialog__actions">
-        <button id="btnCameraEnable" class="btn btn-primary" type="button">
-          KAMERA AKTIVIEREN
-        </button>
-        <button id="btnCameraRecord" class="btn btn-stop" type="button" disabled>
-          AUFNAHME STARTEN
-        </button>
-        <button id="btnCameraDiscard" class="btn btn-secondary" type="button" disabled>
-          AUFNAHME VERWERFEN
-        </button>
-      </div>
-    </section>
-  </dialog>
-
-  <dialog id="resultDialog" class="result-dialog" aria-labelledby="resultDialogTitle">
-    <section class="result-dialog__panel">
-      <header class="result-dialog__header">
-        <div>
-          <p class="eyebrow">TESTBERICHT</p>
-          <h2 id="resultDialogTitle">GESCHIRR-VERGLEICH</h2>
-        </div>
-        <button
-          id="btnResultClose"
-          class="btn btn-secondary result-dialog__close"
-          type="button"
-          aria-label="Testbericht schließen"
-        >
-          SCHLIESSEN
-        </button>
-      </header>
-
-      <div id="resultVerdict" class="result-verdict">
-        Noch keine ausreichenden Daten für einen Vergleich.
-      </div>
-
-      <div class="result-dialog__body">
-        <div class="result-visuals">
-          <div class="result-chart">
-            <canvas id="resultRadarChart" aria-label="Vergleichsdiagramm Passform, Stabilität, Laufbild, Symmetrie"></canvas>
-          </div>
-
-          <div
-            class="result-chart result-chart--3d scene3d-container"
-            id="resultScene3dSlot"
-            aria-label="3D Bewegungsansicht mit Platzhaltermodell"
-          ></div>
-        </div>
-
-        <div class="result-scorelist" id="resultScoreList">
-          <div class="result-scorelist__row" data-score="fit">
-            <span>PASSFORM</span>
-            <strong>—</strong>
-            <small>—</small>
-          </div>
-          <div class="result-scorelist__row" data-score="stability">
-            <span>STABILITÄT</span>
-            <strong>—</strong>
-            <small>—</small>
-          </div>
-          <div class="result-scorelist__row" data-score="movement">
-            <span>LAUFBILD</span>
-            <strong>—</strong>
-            <small>—</small>
-          </div>
-          <div class="result-scorelist__row" data-score="symmetry">
-            <span>SYMMETRIE</span>
-            <strong>—</strong>
-            <small>—</small>
-          </div>
-        </div>
-      </div>
-
-      <table class="result-table" id="resultDetailTable">
-        <thead>
-          <tr>
-            <th>MESSUNG</th>
-            <th>GANGART</th>
-            <th>KADENZ</th>
-            <th>DAUER</th>
-            <th>QUALITÄT</th>
-          </tr>
-        </thead>
-        <tbody id="resultDetailBody">
-          <tr>
-            <td colspan="5">Keine Messdaten vorhanden.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="result-dialog__actions">
-        <button id="btnResultCsv" class="btn btn-utility" type="button">
-          CSV EXPORTIEREN
-        </button>
-        <button id="btnResultPdf" class="btn btn-utility" type="button">
-          PDF EXPORTIEREN
-        </button>
-      </div>
-    </section>
-  </dialog>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-  <script src="version.js"></script>
-  <script src="analysis.js"></script>
-  <script src="storage.js"></script>
-  <script src="sensor.js"></script>
-  <script src="scene3d.js"></script>
-  <script src="pdf.js"></script>
-  <script src="app.js"></script>
+  <script src="./sensor.js"></script>
+  <script src="./storage.js"></script>
+  <script src="./version.js"></script>
+  <script src="./analysis.js"></script>
+  <script src="./scene3d.js"></script>
+  <script src="./pdf.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
